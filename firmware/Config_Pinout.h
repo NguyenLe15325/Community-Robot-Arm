@@ -43,6 +43,7 @@
 #define GRIPPER_IN4_PIN         A3
 
 // IMPORTANT: Gripper direction fix
+// Keep the #define above unchanged - only reverse physical wires!
 // REVERSE the physical wiring on ULN2003 board:
 //
 // If defined as:  IN1→A0, IN2→A1, IN3→A2, IN4→A3
@@ -51,7 +52,6 @@
 // If defined as:  IN1→A3, IN2→A2, IN3→A1, IN4→A0
 // Then wire as:   IN1→A0, IN2→A1, IN3→A2, IN4→A3
 //
-// Keep the #define below unchanged - only reverse physical wires!
 
 // ====================================================================
 
