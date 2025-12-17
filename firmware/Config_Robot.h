@@ -92,8 +92,9 @@
 
 // --- Gripper Speed ---
 #define GRIPPER_DEFAULT_SPEED   300.0       // Default speed (steps/second)
-#define GRIPPER_HOMING_SPEED    200.0       // Homing speed (slower)
-
+// IMPORTANT: This speed is hard coded in Gripper.cpp for now
+// Change this won't affect existing G-code commands
+// Update Gripper.cpp if you need different default speed
 
 // ====================================================================
 // HOME POSITION
