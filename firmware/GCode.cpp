@@ -646,13 +646,18 @@ void GCodeParser::printHelp() {
     Serial.println(F("  T1 T2 T3  Joint angles (degrees)"));
     
     Serial.println(F("\n--- TIPS ---"));
-    Serial.println(F("  • Always home (G28/M6) after power on"));
-    Serial.println(F("  • Use M400 before G4 for accurate delays"));
-    Serial.println(F("  • Add G4 P500 after gripper commands"));
-    Serial.println(F("  • Check position with M114 anytime"));
-    Serial.println(F("  • Disable motors (M18) when not in use"));
-    Serial.println(F("  • All commands return 'ok' when done"));
-    Serial.println(F("  • Use ';' for comments in G-code"));
+    Serial.println(F("  • Home (G28/M6) at startup for consistent positioning"));
+    Serial.println(F("    (Optional for open-loop systems - mainly for reference)"));
+    Serial.println(F("  • Use M400 to ensure moves complete before delays (G4)"));
+    Serial.println(F("  • Add G4 P500 after gripper commands for stability"));
+    Serial.println(F("  • Verify position anytime with M114"));
+    Serial.println(F("  • Disable motors (M18) when idle to reduce power draw"));
+    Serial.println(F("  • All commands respond with 'ok' on completion"));
+    Serial.println(F("  • Use ';' to add comments in G-code scripts"));
+    Serial.println();
+    Serial.println(F("  Note: Since this is an open-loop system, homing sets a"));
+    Serial.println(F("        reference point but doesn't guarantee absolute position."));
+    Serial.println(F("        Manually position the arm at startup for best results."));
     if (gripper) {
         Serial.println(F("  • Use M3001 for quick gripper check"));
     }
