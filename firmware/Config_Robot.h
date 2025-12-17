@@ -34,9 +34,9 @@
 //
 // Your setup:
 // - Steps per revolution: 200 (standard NEMA17)
-// - Microstepping mode: 2 (half-step)
+// - Microstepping mode: 8
 // - Gear reduction ratio: 4.5:1
-// Result: 5.0 steps/degree
+// Result: 20.0 steps/degree
 
 #define STEPS_PER_DEGREE        20.0         // Calculated steps per degree
 
@@ -84,7 +84,7 @@
 // - 5mm per rotation  → 4096 ÷ 5  = 819.2 steps/mm
 // - 20mm per rotation → 4096 ÷ 20 = 204.8 steps/mm
 
-#define GRIPPER_STEPS_PER_MM    68.266667       // Adjust based on your mechanism
+#define GRIPPER_STEPS_PER_MM    68.266667       // Adjust based on your mechanism: 30mm/2048steps
 
 // --- Gripper Travel Limits ---
 #define GRIPPER_MIN_POSITION    0.0         // Fully open (mm)
@@ -110,8 +110,11 @@
 // ====================================================================
 
 #define GCODE_VERBOSE_MODE      true        // Enable verbose output for debugging
-#define GCODE_BUFFER_SIZE       128         // Maximum G-code line length
 
+// --- Information Only (hardcoded in firmware) ---
+// GCODE_BUFFER_SIZE: 128 characters max per line
+// STEP_PULSE_WIDTH: 2 microseconds
+// GRIPPER_SETTLE_TIME: Add G4 P<ms> manually in G-code
 
 // ====================================================================
 // SAFETY LIMITS (From Kinematics3D.h)
@@ -148,19 +151,7 @@
 
 // --- Timing Parameters ---
 #define MOTOR_ENABLE_DELAY_MS   100         // Delay after enabling motors
-#define GRIPPER_SETTLE_TIME_MS  500         // Time for gripper to settle
 
-
-// ====================================================================
-// ADVANCED SETTINGS (Modify with caution)
-// ====================================================================
-
-// --- Step Pulse Width ---
-#define STEP_PULSE_WIDTH_US     2           // Microseconds (min for most drivers)
-
-// --- Motor Enable Logic ---
-#define MOTOR_ENABLE_ACTIVE     LOW         // LOW = enabled (common for drivers)
-#define MOTOR_DISABLE_ACTIVE    HIGH        // HIGH = disabled
 
 
 #endif // CONFIG_ROBOT_H

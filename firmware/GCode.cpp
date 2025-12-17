@@ -209,6 +209,7 @@ bool GCodeParser::executeCommand(const GCodeCommand& cmd) {
             case 84: return handleM84(cmd);
             case 114: return handleM114(cmd);
             case 400: return handleM400(cmd);
+            case 3001: return handleM3001(cmd);
             default:
                 sendError("Unsupported M command: M" + String(cmd.number));
                 return false;
@@ -504,6 +505,26 @@ bool GCodeParser::handleM400(const GCodeCommand& cmd) {
     return true;
 }
 
+bool GCodeParser::handleM3001(const GCodeCommand& cmd) {
+    // Report gripper position only
+    if (!gripper) {
+        sendError("Gripper not configured");
+        return false;
+    }
+    
+    Serial.print(F("Gripper: "));
+    Serial.print(gripper->getCurrentPosition(), 2);
+    Serial.print(F("mm"));
+    
+    if (gripper->isMoving()) {
+        Serial.print(F(" (moving)"));
+    }
+    
+    Serial.println();
+    
+    return true;
+}
+
 // --- Help Function ---
 void GCodeParser::printHelp() {
     Serial.println(F("\n========================================"));
@@ -564,6 +585,11 @@ void GCodeParser::printHelp() {
     Serial.println(F("M400"));
     Serial.println(F("  Wait for all moves to finish"));
     Serial.println();
+    if (gripper) {
+        Serial.println(F("M3001"));
+        Serial.println(F("  Report gripper position only"));
+        Serial.println();
+    }
     Serial.println(F("HELP"));
     Serial.println(F("  Display this command reference"));
     
@@ -627,6 +653,77 @@ void GCodeParser::printHelp() {
     Serial.println(F("  • Disable motors (M18) when not in use"));
     Serial.println(F("  • All commands return 'ok' when done"));
     Serial.println(F("  • Use ';' for comments in G-code"));
+    if (gripper) {
+        Serial.println(F("  • Use M3001 for quick gripper check"));
+    }
+    
+    Serial.println(F("\n--- CALIBRATION & TROUBLESHOOTING ---"));
+    Serial.println(F("\n>> Motor Direction Check:"));
+    Serial.println(F("1. Enable relative mode and test each axis:"));
+    Serial.println(F("   G91              ; Set relative mode"));
+    Serial.println(F("   G0 X10 F10       ; Move X +10mm slowly"));
+    Serial.println(F("   G0 Y10 F10       ; Move Y +10mm slowly"));
+    Serial.println(F("   G0 Z10 F10       ; Move Z +10mm slowly"));
+    Serial.println();
+    Serial.println(F("2. Expected end-effector movement:"));
+    Serial.println(F("   X+10 → Forward (away from base)"));
+    Serial.println(F("   Y+10 → Up (vertical)"));
+    Serial.println(F("   Z+10 → Right (when facing robot)"));
+    Serial.println();
+    Serial.println(F("3. If direction is WRONG:"));
+    Serial.println(F("   For NEMA17: Set MOTOR_X_INVERT=true in Config_Robot.h"));
+    Serial.println(F("   For Gripper: Reverse wire order on ULN2003"));
+    Serial.println(F("     Example: If pins are IN1→A0, IN2→A1, IN3→A2, IN4→A3"));
+    Serial.println(F("              Wire them as IN1→A3, IN2→A2, IN3→A1, IN4→A0"));
+    Serial.println();
+    Serial.println(F("4. Return to absolute mode:"));
+    Serial.println(F("   G90              ; Set absolute mode"));
+    Serial.println();
+    Serial.println(F(">> Steps/Degree Calibration:"));
+    Serial.println(F("1. Mark current position on each joint"));
+    Serial.println(F("2. G91              ; Relative mode"));
+    Serial.println(F("3. G0 T190 F30      ; Move joint 1 by 90 degrees"));
+    Serial.println(F("4. Measure actual rotation with protractor"));
+    Serial.println(F("5. If moved X degrees instead of 90:"));
+    Serial.println(F("   New_value = (90 / X) * 5.0"));
+    Serial.println(F("   Update STEPS_PER_DEGREE in Config_Robot.h"));
+    Serial.println();
+    Serial.println(F(">> Gripper Calibration:"));
+    Serial.println(F("1. M6               ; Home gripper (fully open)"));
+    Serial.println(F("2. Measure jaw opening with calipers"));
+    Serial.println(F("3. M3 S10           ; Command 10mm movement"));
+    Serial.println(F("4. Measure new jaw opening"));
+    Serial.println(F("5. If moved X mm instead of 10:"));
+    Serial.println(F("   New_value = (10 / X) * 409.6"));
+    Serial.println(F("   Update GRIPPER_STEPS_PER_MM in Config_Robot.h"));
+    
+    Serial.println(F("\n--- COMMON ISSUES ---"));
+    Serial.println(F("\nMotors not moving?"));
+    Serial.println(F("  → Send M17 to enable motors"));
+    Serial.println(F("  → Check power supply (12V for NEMA17)"));
+    Serial.println(F("  → Verify wiring matches Config_Pinout.h"));
+    Serial.println();
+    Serial.println(F("Position inaccurate?"));
+    Serial.println(F("  → Manually position at home before power-on"));
+    Serial.println(F("  → Send G28 to reset to home position"));
+    Serial.println(F("  → Calibrate STEPS_PER_DEGREE (see above)"));
+    Serial.println();
+    Serial.println(F("Movement fails?"));
+    Serial.println(F("  → Check joint limits with M114"));
+    Serial.println(F("  → Position may be outside workspace"));
+    Serial.println(F("  → Try intermediate positions"));
+    Serial.println();
+    Serial.println(F("Motor moves wrong direction?"));
+    Serial.println(F("  → Set MOTOR_X_INVERT=true in Config_Robot.h"));
+    Serial.println(F("  → Or swap motor wiring physically"));
+    Serial.println();
+    Serial.println(F("Gripper wrong direction?"));
+    Serial.println(F("  → Reverse all 4 wires on ULN2003 board"));
+    Serial.println(F("  → Keep Config_Pinout.h unchanged"));
+    Serial.println();
+    Serial.println(F("Gripper position inaccurate?"));
+    Serial.println(F("  → Calibrate GRIPPER_STEPS_PER_MM (see above)"));
+    Serial.println(F("  → Send M6 to re-home"));
     
     Serial.println(F("\n========================================\n"));
 }

@@ -184,6 +184,7 @@ void printBanner() {
     Serial.println(F("\n========================================"));
     Serial.println(F("     3-DOF ROBOT ARM CONTROLLER"));
     Serial.println(F("========================================"));
+    Serial.println(F("Author: NguyenLe15325"));
     Serial.println(F("Firmware Version: 1.0"));
     Serial.println(F("Board: Arduino Nano/Uno"));
     Serial.print(F("Baud Rate: "));
@@ -193,137 +194,34 @@ void printBanner() {
 
 void printQuickStart() {
     Serial.println(F("========================================"));
-    Serial.println(F("         COMMAND REFERENCE"));
+    Serial.println(F("         QUICK START GUIDE"));
     Serial.println(F("========================================"));
     
-    Serial.println(F("\n--- MOTION COMMANDS ---"));
-    Serial.println(F("G0/G1 X<pos> Y<pos> Z<pos> F<speed>"));
-    Serial.println(F("  Move to Cartesian position (mm)"));
-    Serial.println(F("  Example: G0 X200 Y50 Z100 F60"));
-    Serial.println();
-    Serial.println(F("G0/G1 T1<deg> T2<deg> T3<deg> F<speed>"));
-    Serial.println(F("  Move to joint angles (degrees)"));
-    Serial.println(F("  Example: G0 T10 T245 T30 F90"));
-    Serial.println();
-    Serial.println(F("G4 P<ms>"));
-    Serial.println(F("  Non-blocking delay in milliseconds"));
-    Serial.println(F("  Example: G4 P500 (wait 0.5 seconds)"));
-    Serial.println();
-    Serial.println(F("G28"));
-    Serial.println(F("  Home robot to initial position"));
-    Serial.println(F("  (Theta1=0, Theta2=90, Theta3=0)"));
-    Serial.println();
-    Serial.println(F("G90"));
-    Serial.println(F("  Absolute positioning mode (default)"));
-    Serial.println();
-    Serial.println(F("G91"));
-    Serial.println(F("  Relative positioning mode"));
+    Serial.println(F("\n1. BEFORE POWER ON:"));
+    Serial.println(F("   • Position robot: T1=0° T2=90° T3=0°"));
+    Serial.println(F("   • Gripper: Fully OPEN (0mm)"));
+    Serial.println(F("   • System assumes this position on startup"));
     
-    #if ENABLE_GRIPPER
-    Serial.println(F("\n--- GRIPPER COMMANDS ---"));
-    Serial.println(F("M3"));
-    Serial.println(F("  Close gripper fully"));
-    Serial.println(F("  Example: M3 F400 (with custom speed)"));
-    Serial.println();
-    Serial.println(F("M3 S<pos>"));
-    Serial.println(F("  Move gripper to position (0-30mm)"));
-    Serial.println(F("  Example: M3 S15 (half closed)"));
-    Serial.println();
-    Serial.println(F("M5"));
-    Serial.println(F("  Open gripper fully"));
-    Serial.println();
-    Serial.println(F("M6"));
-    Serial.println(F("  Home gripper (open & set zero)"));
-    #endif
-    
-    Serial.println(F("\n--- SYSTEM COMMANDS ---"));
-    Serial.println(F("M17"));
-    Serial.println(F("  Enable all motors"));
-    Serial.println();
-    Serial.println(F("M18 / M84"));
-    Serial.println(F("  Disable all motors"));
-    Serial.println();
-    Serial.println(F("M114"));
-    Serial.println(F("  Report current position"));
-    Serial.println(F("  (Cartesian + joint angles + gripper)"));
-    Serial.println();
-    Serial.println(F("M400"));
-    Serial.println(F("  Wait for all moves to finish"));
-    
-    Serial.println(F("\n--- JOINT LIMITS ---"));
-    Serial.println(F("  Theta1 (Base):     -90° to +90°"));
-    Serial.println(F("  Theta2 (Shoulder):   0° to 130°"));
-    Serial.println(F("  Theta3 (Elbow):    -17° to +90°"));
-    
-    Serial.println(F("\n--- EXAMPLE SEQUENCES ---"));
-    Serial.println(F("\n1. Basic Startup:"));
+    Serial.println(F("\n2. VERIFY POSITION:"));
     Serial.println(F("   M17              ; Enable motors"));
-    Serial.println(F("   G28              ; Home robot"));
-    #if ENABLE_GRIPPER
-    Serial.println(F("   M6               ; Home gripper"));
-    #endif
+    Serial.println(F("   M114             ; Should show T1:0 T2:90 T3:0"));
+    Serial.println(F("   NOTE: G28 not needed - already at home!"));
     
-    Serial.println(F("\n2. Simple Movement:"));
-    Serial.println(F("   G0 X200 Y50 Z100 F60"));
-    Serial.println(F("   M400             ; Wait"));
-    Serial.println(F("   G0 T10 T245 T30  ; Joint mode"));
+    Serial.println(F("\n3. TEST DIRECTIONS (First time only):"));
+    Serial.println(F("   G91              ; Relative mode"));
+    Serial.println(F("   G0 X10 Y10 Z10 F10"));
+    Serial.println(F("   Expected: X→Forward, Y→Up, Z→Right"));
+    Serial.println(F("   If wrong → Set MOTOR_X_INVERT in Config"));
+    Serial.println(F("   G90              ; Back to absolute mode"));
     
-    #if ENABLE_GRIPPER
-    Serial.println(F("\n3. Pick and Place:"));
-    Serial.println(F("   G0 X200 Y100 Z50 ; Move to pick"));
-    Serial.println(F("   M400             ; Wait for motion"));
-    Serial.println(F("   G4 P200          ; Stabilize"));
-    Serial.println(F("   M5               ; Open gripper"));
-    Serial.println(F("   G4 P500          ; Wait for open"));
-    Serial.println(F("   M3               ; Close gripper"));
-    Serial.println(F("   G4 P800          ; Wait for grip"));
-    Serial.println(F("   G0 X150 Y-50 Z80 ; Move to place"));
-    Serial.println(F("   M400"));
-    Serial.println(F("   M5               ; Release"));
-    Serial.println(F("   G4 P500"));
-    Serial.println(F("   G28              ; Return home"));
+    Serial.println(F("\n4. BASIC COMMANDS:"));
+    Serial.println(F("   G0 X200 Y50 Z100 ; Move Cartesian"));
+    Serial.println(F("   G0 T10 T245 T30  ; Move joints (deg)"));
+    Serial.println(F("   M3 / M5          ; Close/Open gripper"));
+    Serial.println(F("   M114             ; Report position"));
+    Serial.println(F("   HELP             ; Full reference"));
     
-    Serial.println(F("\n4. Gripper Test:"));
-    Serial.println(F("   M6               ; Home gripper"));
-    Serial.println(F("   G4 P500"));
-    Serial.println(F("   M3 S5            ; Close to 5mm"));
-    Serial.println(F("   G4 P1000"));
-    Serial.println(F("   M3 S15           ; Close to 15mm"));
-    Serial.println(F("   G4 P1000"));
-    Serial.println(F("   M3               ; Fully close"));
-    Serial.println(F("   G4 P1000"));
-    Serial.println(F("   M5               ; Open"));
-    #endif
-    
-    Serial.println(F("\n--- PARAMETERS ---"));
-    Serial.println(F("  F<value>  Feedrate (deg/s or mm/s)"));
-    Serial.println(F("  S<value>  Gripper position (mm)"));
-    Serial.println(F("  P<value>  Delay time (ms)"));
-    Serial.println(F("  X Y Z     Cartesian coordinates (mm)"));
-    Serial.println(F("  T1 T2 T3  Joint angles (degrees)"));
-    
-    Serial.println(F("\n--- TIPS ---"));
-    Serial.println(F("  • Always home (G28/M6) after power on"));
-    Serial.println(F("  • Use M400 before G4 for accurate delays"));
-    Serial.println(F("  • Add G4 P500 after gripper commands"));
-    Serial.println(F("  • Check position with M114 anytime"));
-    Serial.println(F("  • Disable motors (M18) when not in use"));
-    Serial.println(F("  • All commands return 'ok' when done"));
-    Serial.println(F("  • Use ';' for comments in G-code"));
-    
-    Serial.println(F("\n--- TROUBLESHOOTING ---"));
-    Serial.println(F("  Motors not moving?"));
-    Serial.println(F("    → Send M17 to enable motors"));
-    Serial.println(F("  Position inaccurate?"));
-    Serial.println(F("    → Home with G28 and M6"));
-    Serial.println(F("  Movement fails?"));
-    Serial.println(F("    → Check joint limits with M114"));
-    Serial.println(F("  Gripper wrong direction?"));
-    Serial.println(F("    → Swap two wires on ULN2003"));
-    
-    Serial.println(F("\n========================================"));
-    Serial.println(F("Ready for commands! Type help anytime."));
-    Serial.println(F("========================================\n"));
+    Serial.println(F("\n========================================\n"));
 }
 
 // ====================================================================

@@ -81,6 +81,7 @@ private:
     bool handleM6(const GCodeCommand& cmd);    // Gripper home
     bool handleM114(const GCodeCommand& cmd);  // Get current position
     bool handleM400(const GCodeCommand& cmd);  // Wait for moves to finish
+    bool handleM3001(const GCodeCommand& cmd); // Get gripper position only
     
     void printHelp();  // Print comprehensive command guide
 };
