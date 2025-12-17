@@ -147,7 +147,7 @@
 // 3. Motors assume they're at home position
 // 4. Send commands (G0, M114, etc.)
 //
-#define ENABLE_STARTUP_HOME     false       // Move to home on startup (usually not needed)
+#define ENABLE_STARTUP_HOME     false       // Move to home on startup (not needed for open-loop system)
 
 // --- Timing Parameters ---
 #define MOTOR_ENABLE_DELAY_MS   100         // Delay after enabling motors
