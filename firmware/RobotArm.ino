@@ -15,8 +15,8 @@
  * - 3x NEMA17 steppers with step/dir drivers
  * - 1x BYJ-48 stepper with ULN2003 driver
  * 
- * Author: Your Name
- * Date: 2024
+ * Author: NguyenLe15325
+ * Date: 2025
  * ====================================================================
  */
 
