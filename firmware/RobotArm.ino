@@ -184,7 +184,6 @@ void printBanner() {
     Serial.println(F("\n========================================"));
     Serial.println(F("     3-DOF ROBOT ARM CONTROLLER"));
     Serial.println(F("========================================"));
-    Serial.println(F("Author: NguyenLe15325"));
     Serial.println(F("Firmware Version: 1.0"));
     Serial.println(F("Board: Arduino Nano/Uno"));
     Serial.print(F("Baud Rate: "));
