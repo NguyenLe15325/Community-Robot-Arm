@@ -1,71 +1,92 @@
 # Kinematic Model and Workspace Constraints
 
-This document presents the robot arm kinematic model, sign conventions, workspace constraints, and forward/inverse kinematic equations used by firmware.
+This document summarizes the robot arm kinematic model, sign conventions, workspace constraints, and forward/inverse kinematic equations used by firmware.
 
 Reference implementation files:
 - [firmware/RobotArm/Kinematics3D.h](firmware/RobotArm/Kinematics3D.h)
 - [firmware/RobotArm/Kinematics3D.cpp](firmware/RobotArm/Kinematics3D.cpp)
 - [firmware/RobotArm/Config_Robot.h](firmware/RobotArm/Config_Robot.h)
 
-Notation and units:
-- Position variables x, y, z, L, and a are expressed in mm.
-- Home and limit values are listed in deg for readability.
-- Trigonometric equations are evaluated in rad internally.
-- Joint symbols are denoted as theta1, theta2, and theta3.
+## Notation and Units
 
-## 1. Home Pose and Axis Frame
+| Symbol | Meaning | Unit |
+|---|---|---|
+| x, y, z | Cartesian position | mm |
+| L | Effective link length (both links use L) | mm |
+| a | Base offset | mm |
+| theta1, theta2, theta3 | Joint angles | deg in documentation, rad in computation |
 
-The home pose is defined by:
-- theta1 = 0 deg
-- theta2 = 90 deg
-- theta3 = 0 deg
+## 1. Mechanical Model Used in Firmware
 
-Geometric interpretation:
-- base (theta1) centered
-- lower shank perpendicular to the ground plane
-- upper shank parallel to the ground plane
-- xyz axes follow the figure below
-
-![Home pose and xyz definition](assets/home.jpg)
-
-## 2. Positive/Negative Rotation Directions
-
-### 2.1 Base axis (theta1)
-
-Base rotation sign follows the base/top-view convention, where pos_z and neg_z indicate the positive/negative theta1 directions.
-
-![Base direction definition](assets/base.jpg)
-
-![Top view reference](assets/topview.jpg)
-
-![Positive z reference](assets/pos_z.jpg)
-
-![Negative z reference](assets/neg_z.jpg)
-
-### 2.2 Shoulder and elbow (theta2, theta3)
-
-In side view (xy plane), positive theta2 and theta3 follow the arrow direction shown in the figure.
-
-![Side view with theta2/theta3 sign convention](assets/sideview.jpg)
-
-## 3. Mechanical Model Used in Firmware
-
-Although the physical Tobler arm uses shoulder/elbow 4-bar linkages, firmware computes motion with an equivalent 3-DOF kinematic model:
+The physical Tobler arm uses shoulder/elbow 4-bar linkages.
+For kinematic computation, firmware uses an equivalent 3-DOF model:
 - base rotation joint theta1
 - shoulder-equivalent joint theta2
 - elbow-equivalent joint theta3
 - two effective links of length L, plus base offset a
 
-Current model constants:
-- L = 140.0 mm
-- a = 54.0 mm
+Model constants:
+
+| Parameter | Value |
+|---|---|
+| L | 140.0 mm |
+| a | 54.0 mm |
+
+## 2. Home Pose and Axis Frame
+
+Home pose:
+
+| Joint | Value | Physical meaning |
+|---|---|---|
+| theta1 (base rotation) | 0 deg | Robot facing middle/front |
+| theta2 (shoulder-equivalent) | 90 deg | Lower shank perpendicular to ground plane |
+| theta3 (elbow-equivalent) | 0 deg | Upper shank parallel to ground plane |
+
+The xyz axes and home geometry are shown below.
+
+![Home pose and xyz definition](assets/home.jpg)
+
+*Figure 1. Home pose and xyz axis definition.*
+
+## 3. Positive/Negative Rotation Directions
+
+### 3.1 Base axis (theta1)
+
+Base rotation sign follows the base/top-view convention. The pos_z and neg_z references indicate positive and negative theta1 directions.
+
+![Base direction definition](assets/base.jpg)
+
+*Figure 2. Base reference view for theta1 rotation direction.*
+
+![Top view reference](assets/topview.jpg)
+
+*Figure 3. Top-view reference used for theta1 sign interpretation.*
+
+![Positive z reference](assets/pos_z.jpg)
+
+*Figure 4. Positive z reference orientation.*
+
+![Negative z reference](assets/neg_z.jpg)
+
+*Figure 5. Negative z reference orientation.*
+
+### 3.2 Shoulder and elbow (theta2, theta3)
+
+In side view (xy plane), positive theta2 and theta3 follow the arrow direction shown in the figure.
+
+![Side view with theta2/theta3 sign convention](assets/sideview.jpg)
+
+*Figure 6. Side-view sign convention for theta2 and theta3.*
 
 ## 4. Joint Limits
 
-Joint angle limits used by kinematics:
-- theta1 in [-90, 90] deg
-- theta2 in [0, 130] deg
-- theta3 in [-17, 90] deg
+Joint limits used by kinematics:
+
+| Joint | Range |
+|---|---|
+| theta1 | [-90, 90] deg |
+| theta2 | [0, 130] deg |
+| theta3 | [-17, 90] deg |
 
 These limits define valid FK/IK solutions and workspace boundaries.
 
@@ -77,21 +98,17 @@ $$
 R = L\cos\theta_2 + L\cos\theta_3 + a
 $$
 
-Then Cartesian position is:
+Then:
 
 $$
-x = R\cos\theta_1
+\begin{aligned}
+x &= R\cos\theta_1 \\
+y &= L\sin\theta_2 - L\sin\theta_3 \\
+z &= R\sin\theta_1
+\end{aligned}
 $$
 
-$$
-y = L\sin\theta_2 - L\sin\theta_3
-$$
-
-$$
-z = R\sin\theta_1
-$$
-
-Forward kinematics is then evaluated directly from the joint state.
+Forward kinematics is evaluated directly from the joint state.
 
 ## 6. Inverse Kinematics
 
@@ -131,7 +148,7 @@ $$
 \theta_{3,1} = \alpha + \phi, \quad \theta_{3,2} = \alpha - \phi
 $$
 
-This produces up to two candidate elbow branches.
+This yields up to two candidate elbow branches.
 
 ### 6.3 Recover theta2 and validate
 
@@ -156,10 +173,13 @@ Both branches are evaluated, and any solution outside joint limits is rejected.
 ### 7.1 Axis-aligned bounds
 
 Configured axis-aligned bounds:
-- X in [0, 320]
-- Z in [-320, 320]
 
-Y bounds are derived in the next subsection from joint-angle extremes.
+| Axis | Range |
+|---|---|
+| X | [0, 320] |
+| Z | [-320, 320] |
+
+Y bounds are derived from joint-angle extremes.
 
 ### 7.2 Y bounds from extreme angles
 
@@ -174,6 +194,8 @@ $$
 The figure below illustrates the minimum-y boundary concept.
 
 ![Minimum y concept](assets/ymin.jpg)
+
+*Figure 7. Minimum-y workspace boundary concept.*
 
 ### 7.3 Radial reach bounds in xz projection
 
@@ -191,7 +213,11 @@ The figures below illustrate the minimum and maximum radial reach boundaries.
 
 ![Minimum reach concept](assets/minreach.jpg)
 
+*Figure 8. Minimum radial reach boundary.*
+
 ![Maximum reach concept](assets/maxreach.jpg)
+
+*Figure 9. Maximum radial reach boundary.*
 
 ## 8. Computational Workflow Summary
 
