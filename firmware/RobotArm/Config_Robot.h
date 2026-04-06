@@ -94,6 +94,10 @@
 #define GRIPPER_DEFAULT_SPEED   300.0       // Default speed (steps/second)
 #define GRIPPER_HOMING_SPEED    200.0       // Homing speed (steps/second)
 
+// --- Gripper Direction ---
+// Set true to reverse gripper motion direction in firmware (no rewiring required).
+#define GRIPPER_INVERT_DIRECTION false
+
 // --- GRIPPER SPEED NOTES ---
 // • This define is informational only - actual defaults are hardcoded in Gcode.cpp
 // • To change default speeds, modify handleM3() and handleM6() in Gcode.cpp
@@ -111,6 +115,48 @@
 #define HOME_THETA2             90.0        // Shoulder: 90°
 #define HOME_THETA3             0.0         // Elbow: 0°
 
+// ====================================================================
+// ENDSTOP HOMING CONFIGURATION
+// ====================================================================
+
+// Set false when no endstops are installed.
+// - true: G28 uses endstop seek + calibrated offset
+// - false: G28 falls back to software home move (HOME_THETA1/2/3)
+#define ENDSTOPS_INSTALLED             true
+
+// Endstops are read with INPUT_PULLUP by default.
+// Triggered state = LOW means switch pulled to GND.
+#define ENDSTOP_ACTIVE_LOW              true
+
+// Homing seek direction in THETA space:
+// +1 = increase theta, -1 = decrease theta
+// Requested behavior:
+// - Theta1 and Theta2 seek in positive direction
+// - Theta3 seeks in negative direction
+#define HOMING_DIR_THETA1               1
+#define HOMING_DIR_THETA2               1
+#define HOMING_DIR_THETA3              -1
+
+// Signed calibrated offset after endstop hit, in motor steps.
+// Positive offset = theta increases, negative offset = theta decreases.
+// angle_to_step = STEPS_PER_DEGREE (already includes microstep mode and belt reduction ratio).
+// Initial estimate below; fine-tune each axis after first homing tests.
+#define HOME_OFFSET_STEPS_THETA1        -1800L // -((theta1_max - theta1_home) * angle_to_step) = -((90 - 0) * 20) = -1800
+#define HOME_OFFSET_STEPS_THETA2         -800L // -((theta2_max - theta2_home) * angle_to_step) = -((130 - 90) * 20) = -800
+#define HOME_OFFSET_STEPS_THETA3          340L // +((theta3_home - theta3_min) * angle_to_step) = +((0 - (-17)) * 20) = +340
+
+// Homing safety limits
+#define HOMING_SWITCH_DEBOUNCE_COUNT    3    // Consecutive reads required
+#define HOMING_RELEASE_MAX_STEPS        400L // Release budget from already-pressed switch: 400/20 = 20deg
+#define HOMING_SEEK_MAX_STEPS_THETA1   4200L // ((theta1_max - theta1_min) * angle_to_step) + margin = ((90 - (-90)) * 20) + 600 = 4200
+#define HOMING_SEEK_MAX_STEPS_THETA2   3200L // ((theta2_max - theta2_min) * angle_to_step) + margin = ((130 - 0) * 20) + 600 = 3200
+#define HOMING_SEEK_MAX_STEPS_THETA3   2800L // ((theta3_max - theta3_min) * angle_to_step) + margin = ((90 - (-17)) * 20) + 660 = 2800
+
+// Homing speeds (deg/s)
+#define HOMING_SEEK_FEEDRATE            HOMING_FEEDRATE
+#define HOMING_RELEASE_FEEDRATE         20.0
+#define HOMING_OFFSET_FEEDRATE          20.0
+
 
 // ====================================================================
 // G-CODE PARSER SETTINGS
@@ -118,6 +164,7 @@
 
 #define GCODE_VERBOSE_MODE      true        // Enable verbose output for debugging
 
+// ====================================================================
 // --- Information Only (hardcoded in firmware) ---
 // GCODE_BUFFER_SIZE: 128 characters max per line
 // STEP_PULSE_WIDTH: 2 microseconds
@@ -141,23 +188,6 @@
 
 // --- Enable/Disable Features ---
 #define ENABLE_GRIPPER          true        // Enable gripper control
-
-// --- Startup Behavior ---
-// IMPORTANT: This is an open-loop system without limit switches!
-// Auto-homing only moves motors to home angles - it does NOT verify
-// the physical position. You MUST manually position the robot at 
-// home before powering on, or position tracking will be incorrect.
-//
-// Recommended workflow:
-// 1. Manually position robot at home (T1=0°, T2=90°, T3=0°)
-// 2. Power on Arduino
-// 3. Motors assume they're at home position
-// 4. Send commands (G0, M114, etc.)
-//
-#define ENABLE_STARTUP_HOME     false       // Move to home on startup (not needed for open-loop system)
-
-// --- Timing Parameters ---
-#define MOTOR_ENABLE_DELAY_MS   100         // Delay after enabling motors
 
 
 

@@ -46,8 +46,10 @@ public:
     void setMotionParams(const MotionParams& params);
     
     /**
-     * @brief Home the robot to initial position (0°, 90°, 0°)
-     * @param feedrate Homing speed in degrees/second
+        * @brief Home robot
+        * - ENDSTOPS_INSTALLED=true: endstop seek + calibrated offset
+        * - ENDSTOPS_INSTALLED=false: software move to HOME_THETA1/2/3
+        * @param feedrate Homing speed in degrees/second (0 = use configured default)
      * @return true if homing successful
      */
     bool home(float feedrate = 30.0);
@@ -77,6 +79,12 @@ public:
      * @brief Get current Cartesian position
      */
     CartesianPos getCurrentPosition() const;
+
+    /**
+     * @brief Get endstop state for axis index (0=T1, 1=T2, 2=T3)
+     * @return true when endstop is triggered
+     */
+    bool getEndstopTriggered(uint8_t axisIndex) const;
     
     /**
      * @brief Check if motors are currently moving
@@ -92,6 +100,19 @@ public:
      * @brief Update motion state (call frequently in loop)
      */
     void update();
+
+    /**
+     * @brief Poll serial input for emergency stop triggers and stop immediately.
+        * Triggers: '!' or Ctrl-X (0x18).
+     * @return true if emergency stop was triggered by serial input.
+     */
+    bool serviceEmergencyStopInput();
+
+    /**
+     * @brief Consume emergency-stop latch raised by serial-triggered stop.
+     * @return true if a serial emergency stop occurred since last consume.
+     */
+    bool consumeEmergencyStopLatch();
 
 private:
     MotorConfig motors[3];
@@ -109,13 +130,29 @@ private:
     long targetSteps[3];
     float stepDelays[3];      // Microseconds between steps for each motor
     unsigned long lastStepTime[3];
+
+    // Endstop pins (theta1, theta2, theta3)
+    uint8_t endstopPins[3];
+
+    // Emergency input latch for blocking loops.
+    bool emergencyStopLatched;
     
     // Helper functions
     long anglesToSteps(int motorIndex, float angleRad);
     float stepsToAngle(int motorIndex, long steps);
     void calculateCoordinatedMotion(const JointAngles& target, float feedrate);
     void stepMotor(int motorIndex);
+    void stepMotorDirection(int motorIndex, int8_t direction);
     bool withinLimits(const JointAngles& angles);
+
+    bool readEndstopRaw(int motorIndex) const;
+    bool isEndstopTriggered(int motorIndex) const;
+    int8_t thetaDirToStepDir(int motorIndex, int8_t thetaDirection) const;
+    unsigned long homingStepDelayUs(int motorIndex, float feedrate) const;
+    bool releasePressedEndstops(float feedrate);
+    bool seekAllEndstops(float feedrate);
+    bool moveHomeOffsetSteps(float feedrate);
+    bool pollEmergencyStopInput();
 };
 
 #endif // NEMA17_H

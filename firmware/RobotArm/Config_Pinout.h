@@ -32,6 +32,14 @@
 // --- Shared Enable Pin for All NEMA17 Motors ---
 #define MOTORS_ENABLE_PIN       8
 
+// --- Joint Endstops (active state configured in Config_Robot.h) ---
+// Theta1 (base): D10
+// Theta2 (shoulder): D9
+// Theta3 (elbow): D11
+#define THETA1_ENDSTOP_PIN      10
+#define THETA2_ENDSTOP_PIN      9
+#define THETA3_ENDSTOP_PIN      11
+
 
 // ====================================================================
 // GRIPPER (BYJ-48 with ULN2003 Driver)
@@ -42,15 +50,8 @@
 #define GRIPPER_IN3_PIN         A2
 #define GRIPPER_IN4_PIN         A3
 
-// IMPORTANT: Gripper direction fix
-// Keep the #define above unchanged - only reverse physical wires!
-// REVERSE the physical wiring on ULN2003 board:
-//
-// If defined as:  IN1→A0, IN2→A1, IN3→A2, IN4→A3
-// Then wire as:   IN1→A3, IN2→A2, IN3→A1, IN4→A0
-//
-// If defined as:  IN1→A3, IN2→A2, IN3→A1, IN4→A0
-// Then wire as:   IN1→A0, IN2→A1, IN3→A2, IN4→A3
+// Gripper direction is configurable in firmware.
+// Use GRIPPER_INVERT_DIRECTION in Config_Robot.h instead of rewiring.
 
 // ====================================================================
 

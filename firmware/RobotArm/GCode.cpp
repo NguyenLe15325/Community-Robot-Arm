@@ -1,4 +1,5 @@
 #include "GCode.h"
+#include "Config_Robot.h"
 
 // --- Initialization ---
 void GCodeParser::begin(NEMA17Controller* controller, BYJ48Gripper* gripperController) {
@@ -6,6 +7,7 @@ void GCodeParser::begin(NEMA17Controller* controller, BYJ48Gripper* gripperContr
     gripper = gripperController;
     verboseMode = false;
     inputBuffer = "";
+    inputBuffer.reserve(128);
     absoluteMode = true;
     currentFeedrate = 60.0; // Default 60 deg/s or mm/s depending on mode
     
@@ -13,25 +15,27 @@ void GCodeParser::begin(NEMA17Controller* controller, BYJ48Gripper* gripperContr
     delaying = false;
     delayStartTime = 0;
     delayDuration = 0;
-    
-    Serial.println(F("G-Code Parser Ready"));
-    Serial.println(F("Supported: G0/G1, G4, G28, G90/G91, M17/M18/M84, M114, M400"));
-    Serial.println(F("Custom: T1/T2/T3 for joint angles (degrees)"));
-    if (gripper) {
-        Serial.println(F("Gripper: M3 (close), M5 (open), M3 S<pos> (position)"));
-    }
-    sendOK();
 }
 
 // --- Update Loop ---
 void GCodeParser::update() {
     // Check if we're in a non-blocking delay
     if (delaying) {
+        if (motor->serviceEmergencyStopInput()) {
+            motor->consumeEmergencyStopLatch();
+            delaying = false;
+            if (gripper) {
+                gripper->stop();
+                gripper->disable();
+            }
+            Serial.println(F("ALARM:ESTOP"));
+            sendError("Delay aborted");
+            return;
+        }
+
         if (millis() - delayStartTime >= delayDuration) {
             delaying = false;
-            if (verboseMode) {
-                Serial.println(F("Delay complete"));
-            }
+            debugPrintln(F("G4 complete"));
             sendOK();
         }
         return; // Don't process new commands while delaying
@@ -66,10 +70,6 @@ void GCodeParser::update() {
 }
 
 // --- Response Functions ---
-void GCodeParser::sendResponse(const String& message) {
-    Serial.println(message);
-}
-
 void GCodeParser::sendError(const String& error) {
     Serial.print(F("Error: "));
     Serial.println(error);
@@ -77,6 +77,18 @@ void GCodeParser::sendError(const String& error) {
 
 void GCodeParser::sendOK() {
     Serial.println(F("ok"));
+}
+
+void GCodeParser::debugPrintPrefix() {
+    Serial.print(F("[DBG] "));
+}
+
+void GCodeParser::debugPrintln(const __FlashStringHelper* message) {
+    if (!verboseMode) {
+        return;
+    }
+    debugPrintPrefix();
+    Serial.println(message);
 }
 
 // --- Parser ---
@@ -118,6 +130,11 @@ bool GCodeParser::parseLine(const String& line, GCodeCommand& cmd) {
         if (numStr.length() > 0) {
             cmd.number = numStr.toInt();
         }
+    } else if (processedLine == "!") {
+        // Optional quick emergency stop alias
+        cmd.command = 'M';
+        cmd.number = 112;
+        return true;
     } else if (processedLine.startsWith("HELP")) {
         // Special help command
         cmd.command = 'H';
@@ -207,7 +224,9 @@ bool GCodeParser::executeCommand(const GCodeCommand& cmd) {
             case 17: return handleM17(cmd);
             case 18: return handleM18(cmd);
             case 84: return handleM84(cmd);
+            case 112: return handleM112(cmd);
             case 114: return handleM114(cmd);
+            case 119: return handleM119(cmd);
             case 400: return handleM400(cmd);
             case 3001: return handleM3001(cmd);
             default:
@@ -237,7 +256,8 @@ bool GCodeParser::handleG0G1(const GCodeCommand& cmd) {
         if (cmd.hasT3) target.theta3 = cmd.t3 * (M_PI / 180.0);
         
         if (verboseMode) {
-            Serial.print(F("Moving to joints: T1="));
+            debugPrintPrefix();
+            Serial.print(F("G0/G1 joint target [deg] T1="));
             Serial.print(target.theta1 * 180.0 / M_PI);
             Serial.print(F(" T2="));
             Serial.print(target.theta2 * 180.0 / M_PI);
@@ -266,7 +286,8 @@ bool GCodeParser::handleG0G1(const GCodeCommand& cmd) {
         }
         
         if (verboseMode) {
-            Serial.print(F("Moving to: X="));
+            debugPrintPrefix();
+            Serial.print(F("G0/G1 cart target [mm] X="));
             Serial.print(target.x);
             Serial.print(F(" Y="));
             Serial.print(target.y);
@@ -301,9 +322,10 @@ bool GCodeParser::handleG4(const GCodeCommand& cmd) {
     }
     
     if (verboseMode) {
-        Serial.print(F("Delaying for "));
+        debugPrintPrefix();
+        Serial.print(F("G4 start P="));
         Serial.print(delayDuration);
-        Serial.println(F("ms (non-blocking)"));
+        Serial.println(F("ms"));
     }
     
     delaying = true;
@@ -315,70 +337,104 @@ bool GCodeParser::handleG4(const GCodeCommand& cmd) {
 
 bool GCodeParser::handleG28(const GCodeCommand& cmd) {
     // Home the robot
-    if (verboseMode) {
-        Serial.println(F("Homing..."));
+    debugPrintln(F("G28 start"));
+
+    float homingFeedrate = HOMING_SEEK_FEEDRATE;
+    if (cmd.hasF) {
+        homingFeedrate = cmd.f;
     }
     
-    if (!motor->home(currentFeedrate)) {
-        sendError("Homing failed");
+    if (!motor->home(homingFeedrate)) {
+        if (motor->consumeEmergencyStopLatch()) {
+            if (gripper) {
+                gripper->stop();
+                gripper->disable();
+            }
+            Serial.println(F("ALARM:ESTOP"));
+            sendError("Homing aborted");
+        } else {
+            sendError("Homing failed");
+        }
         return false;
     }
     
     // Wait for homing to complete
     while (motor->isMoving()) {
         motor->update();
+        if (motor->serviceEmergencyStopInput()) {
+            motor->consumeEmergencyStopLatch();
+            if (gripper) {
+                gripper->stop();
+                gripper->disable();
+            }
+            Serial.println(F("ALARM:ESTOP"));
+            sendError("Homing aborted");
+            return false;
+        }
         delay(1);
     }
     
     if (gripper) {
         while (gripper->isMoving()) {
             gripper->update();
+            if (motor->serviceEmergencyStopInput()) {
+                motor->consumeEmergencyStopLatch();
+                gripper->stop();
+                gripper->disable();
+                Serial.println(F("ALARM:ESTOP"));
+                sendError("Homing aborted");
+                return false;
+            }
             delay(1);
         }
     }
     
-    if (verboseMode) {
-        Serial.println(F("Homing complete"));
-    }
+    debugPrintln(F("G28 done"));
     
     return true;
 }
 
 bool GCodeParser::handleG90(const GCodeCommand& cmd) {
     absoluteMode = true;
-    if (verboseMode) {
-        Serial.println(F("Absolute positioning mode"));
-    }
+    debugPrintln(F("Mode set: G90 absolute"));
     return true;
 }
 
 bool GCodeParser::handleG91(const GCodeCommand& cmd) {
     absoluteMode = false;
-    if (verboseMode) {
-        Serial.println(F("Relative positioning mode"));
-    }
+    debugPrintln(F("Mode set: G91 relative"));
     return true;
 }
 
 bool GCodeParser::handleM17(const GCodeCommand& cmd) {
     motor->enable();
-    if (verboseMode) {
-        Serial.println(F("Motors enabled"));
-    }
+    debugPrintln(F("M17 motors enabled"));
     return true;
 }
 
 bool GCodeParser::handleM18(const GCodeCommand& cmd) {
     motor->disable();
     if (gripper) gripper->disable();
-    if (verboseMode) {
-        Serial.println(F("Motors disabled"));
-    }
+    debugPrintln(F("M18/M84 motors disabled"));
     return true;
 }
 
 bool GCodeParser::handleM84(const GCodeCommand& cmd) {
     return handleM18(cmd); // Alias for M18
+}
+
+bool GCodeParser::handleM112(const GCodeCommand& cmd) {
+    delaying = false;
+    motor->emergencyStop();
+    motor->disable();
+    if (gripper) {
+        gripper->stop();
+        gripper->disable();
+    }
+    Serial.println(F("ALARM:ESTOP"));
+    debugPrintln(F("M112 emergency stop"));
+    // Intentionally suppress normal "ok" after emergency stop.
+    return false;
 }
 
 bool GCodeParser::handleM3(const GCodeCommand& cmd) {
@@ -394,15 +450,19 @@ bool GCodeParser::handleM3(const GCodeCommand& cmd) {
     if (cmd.hasS) {
         // Move to specific position
         if (verboseMode) {
-            Serial.print(F("Gripper to position: "));
+            debugPrintPrefix();
+            Serial.print(F("M3 setpoint [mm] S="));
             Serial.print(cmd.s);
-            Serial.println(F("mm"));
+            Serial.print(F(" F="));
+            Serial.println(speed);
         }
         gripper->moveToPosition(cmd.s, speed);
     } else {
         // Close gripper fully
         if (verboseMode) {
-            Serial.println(F("Closing gripper"));
+            debugPrintPrefix();
+            Serial.print(F("M3 close F="));
+            Serial.println(speed);
         }
         gripper->close(speed);
     }
@@ -421,7 +481,9 @@ bool GCodeParser::handleM5(const GCodeCommand& cmd) {
     if (cmd.hasF) speed = cmd.f;
     
     if (verboseMode) {
-        Serial.println(F("Opening gripper"));
+        debugPrintPrefix();
+        Serial.print(F("M5 open F="));
+        Serial.println(speed);
     }
     gripper->open(speed);
     
@@ -439,7 +501,9 @@ bool GCodeParser::handleM6(const GCodeCommand& cmd) {
     if (cmd.hasF) speed = cmd.f;
     
     if (verboseMode) {
-        Serial.println(F("Homing gripper..."));
+        debugPrintPrefix();
+        Serial.print(F("M6 start F="));
+        Serial.println(speed);
     }
     
     gripper->home(speed);
@@ -447,15 +511,21 @@ bool GCodeParser::handleM6(const GCodeCommand& cmd) {
     // Wait for homing to complete
     while (gripper->isMoving()) {
         gripper->update();
+        if (motor->serviceEmergencyStopInput()) {
+            motor->consumeEmergencyStopLatch();
+            gripper->stop();
+            gripper->disable();
+            Serial.println(F("ALARM:ESTOP"));
+            sendError("Gripper homing aborted");
+            return false;
+        }
         delay(1);
     }
     
     // Set current position as zero
     gripper->setZero();
     
-    if (verboseMode) {
-        Serial.println(F("Gripper homed (position set to 0)"));
-    }
+    debugPrintln(F("M6 done (gripper zeroed)"));
     
     return true;
 }
@@ -487,20 +557,40 @@ bool GCodeParser::handleM114(const GCodeCommand& cmd) {
     return true;
 }
 
+bool GCodeParser::handleM119(const GCodeCommand& cmd) {
+    #if ENDSTOPS_INSTALLED
+    Serial.print(F("T1:"));
+    Serial.print(motor->getEndstopTriggered(0) ? F("TRIG") : F("OPEN"));
+    Serial.print(F(" T2:"));
+    Serial.print(motor->getEndstopTriggered(1) ? F("TRIG") : F("OPEN"));
+    Serial.print(F(" T3:"));
+    Serial.println(motor->getEndstopTriggered(2) ? F("TRIG") : F("OPEN"));
+    #else
+    Serial.println(F("ENDSTOPS:DISABLED"));
+    #endif
+    return true;
+}
+
 bool GCodeParser::handleM400(const GCodeCommand& cmd) {
     // Wait for all moves to finish
-    if (verboseMode) {
-        Serial.println(F("Waiting for moves to complete..."));
-    }
+    debugPrintln(F("M400 wait start"));
     
     while (motor->isMoving()) {
         motor->update();
+        if (motor->serviceEmergencyStopInput()) {
+            motor->consumeEmergencyStopLatch();
+            if (gripper) {
+                gripper->stop();
+                gripper->disable();
+            }
+            Serial.println(F("ALARM:ESTOP"));
+            sendError("Wait aborted");
+            return false;
+        }
         delay(1);
     }
     
-    if (verboseMode) {
-        Serial.println(F("All moves complete"));
-    }
+    debugPrintln(F("M400 wait done"));
     
     return true;
 }
@@ -527,208 +617,10 @@ bool GCodeParser::handleM3001(const GCodeCommand& cmd) {
 
 // --- Help Function ---
 void GCodeParser::printHelp() {
-    Serial.println(F("\n========================================"));
-    Serial.println(F("         COMMAND REFERENCE"));
-    Serial.println(F("========================================"));
-    
-    Serial.println(F("\n--- MOTION COMMANDS ---"));
-    Serial.println(F("G0/G1 X<pos> Y<pos> Z<pos> F<speed>"));
-    Serial.println(F("  Move to Cartesian position (mm)"));
-    Serial.println(F("  Example: G0 X200 Y50 Z100 F60"));
-    Serial.println();
-    Serial.println(F("G0/G1 T1<deg> T2<deg> T3<deg> F<speed>"));
-    Serial.println(F("  Move to joint angles (degrees)"));
-    Serial.println(F("  Example: G0 T10 T245 T30 F90"));
-    Serial.println();
-    Serial.println(F("G4 P<ms>"));
-    Serial.println(F("  Non-blocking delay in milliseconds"));
-    Serial.println(F("  Example: G4 P500 (wait 0.5 seconds)"));
-    Serial.println();
-    Serial.println(F("G28"));
-    Serial.println(F("  Home robot to initial position"));
-    Serial.println(F("  (Theta1=0, Theta2=90, Theta3=0)"));
-    Serial.println();
-    Serial.println(F("G90"));
-    Serial.println(F("  Absolute positioning mode (default)"));
-    Serial.println();
-    Serial.println(F("G91"));
-    Serial.println(F("  Relative positioning mode"));
-    
+    Serial.println(F("CMD: G0/G1 X..Y..Z.. F | T1..T2..T3.. F"));
+    Serial.println(F("CMD: G4 P | G28 [F] | G90/G91"));
+    Serial.println(F("CMD: M17 M18/M84 M112 M114 M119 M400 HELP"));
     if (gripper) {
-        Serial.println(F("\n--- GRIPPER COMMANDS ---"));
-        Serial.println(F("M3"));
-        Serial.println(F("  Close gripper fully"));
-        Serial.println(F("  Example: M3 F400 (with custom speed)"));
-        Serial.println();
-        Serial.println(F("M3 S<pos>"));
-        Serial.println(F("  Move gripper to position (0-30mm)"));
-        Serial.println(F("  Example: M3 S15 (half closed)"));
-        Serial.println();
-        Serial.println(F("M5"));
-        Serial.println(F("  Open gripper fully"));
-        Serial.println();
-        Serial.println(F("M6"));
-        Serial.println(F("  Home gripper (open & set zero)"));
+        Serial.println(F("CMD: M3 M3 S<mm> M5 M6 M3001"));
     }
-    
-    Serial.println(F("\n--- SYSTEM COMMANDS ---"));
-    Serial.println(F("M17"));
-    Serial.println(F("  Enable all motors"));
-    Serial.println();
-    Serial.println(F("M18 / M84"));
-    Serial.println(F("  Disable all motors"));
-    Serial.println();
-    Serial.println(F("M114"));
-    Serial.println(F("  Report current position"));
-    Serial.println(F("  (Cartesian + joint angles + gripper)"));
-    Serial.println();
-    Serial.println(F("M400"));
-    Serial.println(F("  Wait for all moves to finish"));
-    Serial.println();
-    if (gripper) {
-        Serial.println(F("M3001"));
-        Serial.println(F("  Report gripper position only"));
-        Serial.println();
-    }
-    Serial.println(F("HELP"));
-    Serial.println(F("  Display this command reference"));
-    
-    Serial.println(F("\n--- JOINT LIMITS ---"));
-    Serial.println(F("  Theta1 (Base):     -90° to +90°"));
-    Serial.println(F("  Theta2 (Shoulder):   0° to 130°"));
-    Serial.println(F("  Theta3 (Elbow):    -17° to +90°"));
-    
-    Serial.println(F("\n--- EXAMPLE SEQUENCES ---"));
-    Serial.println(F("\n1. Basic Startup:"));
-    Serial.println(F("   M17              ; Enable motors"));
-    Serial.println(F("   G28              ; Home robot"));
-    if (gripper) {
-        Serial.println(F("   M6               ; Home gripper"));
-    }
-    
-    Serial.println(F("\n2. Simple Movement:"));
-    Serial.println(F("   G0 X200 Y50 Z100 F60"));
-    Serial.println(F("   M400             ; Wait"));
-    Serial.println(F("   G0 T10 T245 T30  ; Joint mode"));
-    
-    if (gripper) {
-        Serial.println(F("\n3. Pick and Place:"));
-        Serial.println(F("   G0 X200 Y100 Z50 ; Move to pick"));
-        Serial.println(F("   M400             ; Wait for motion"));
-        Serial.println(F("   G4 P200          ; Stabilize"));
-        Serial.println(F("   M5               ; Open gripper"));
-        Serial.println(F("   G4 P500          ; Wait for open"));
-        Serial.println(F("   M3               ; Close gripper"));
-        Serial.println(F("   G4 P800          ; Wait for grip"));
-        Serial.println(F("   G0 X150 Y-50 Z80 ; Move to place"));
-        Serial.println(F("   M400"));
-        Serial.println(F("   M5               ; Release"));
-        Serial.println(F("   G4 P500"));
-        Serial.println(F("   G28              ; Return home"));
-        
-        Serial.println(F("\n4. Gripper Test:"));
-        Serial.println(F("   M6               ; Home gripper"));
-        Serial.println(F("   G4 P500"));
-        Serial.println(F("   M3 S5            ; Close to 5mm"));
-        Serial.println(F("   G4 P1000"));
-        Serial.println(F("   M3 S15           ; Close to 15mm"));
-        Serial.println(F("   G4 P1000"));
-        Serial.println(F("   M3               ; Fully close"));
-        Serial.println(F("   G4 P1000"));
-        Serial.println(F("   M5               ; Open"));
-    }
-    
-    Serial.println(F("\n--- PARAMETERS ---"));
-    Serial.println(F("  F<value>  Feedrate (deg/s or mm/s)"));
-    Serial.println(F("  S<value>  Gripper position (mm)"));
-    Serial.println(F("  P<value>  Delay time (ms)"));
-    Serial.println(F("  X Y Z     Cartesian coordinates (mm)"));
-    Serial.println(F("  T1 T2 T3  Joint angles (degrees)"));
-    
-    Serial.println(F("\n--- TIPS ---"));
-    Serial.println(F("  • Home (G28/M6) at startup for consistent positioning"));
-    Serial.println(F("    (Optional for open-loop systems - mainly for reference)"));
-    Serial.println(F("  • Use M400 to ensure moves complete before delays (G4)"));
-    Serial.println(F("  • Add G4 P500 after gripper commands for stability"));
-    Serial.println(F("  • Verify position anytime with M114"));
-    Serial.println(F("  • Disable motors (M18) when idle to reduce power draw"));
-    Serial.println(F("  • All commands respond with 'ok' on completion"));
-    Serial.println(F("  • Use ';' to add comments in G-code scripts"));
-    Serial.println();
-    Serial.println(F("  Note: Since this is an open-loop system, homing sets a"));
-    Serial.println(F("        reference point but doesn't guarantee absolute position."));
-    Serial.println(F("        Manually position the arm at startup for best results."));
-    if (gripper) {
-        Serial.println(F("  • Use M3001 for quick gripper check"));
-    }
-    
-    Serial.println(F("\n--- CALIBRATION & TROUBLESHOOTING ---"));
-    Serial.println(F("\n>> Motor Direction Check:"));
-    Serial.println(F("1. Enable relative mode and test each axis:"));
-    Serial.println(F("   G91              ; Set relative mode"));
-    Serial.println(F("   G0 X10 F10       ; Move X +10mm slowly"));
-    Serial.println(F("   G0 Y10 F10       ; Move Y +10mm slowly"));
-    Serial.println(F("   G0 Z10 F10       ; Move Z +10mm slowly"));
-    Serial.println();
-    Serial.println(F("2. Expected end-effector movement:"));
-    Serial.println(F("   X+10 → Forward (away from base)"));
-    Serial.println(F("   Y+10 → Up (vertical)"));
-    Serial.println(F("   Z+10 → Right (when facing robot)"));
-    Serial.println();
-    Serial.println(F("3. If direction is WRONG:"));
-    Serial.println(F("   For NEMA17: Set MOTOR_X_INVERT=true in Config_Robot.h"));
-    Serial.println(F("   For Gripper: Reverse wire order on ULN2003"));
-    Serial.println(F("     Example: If pins are IN1→A0, IN2→A1, IN3→A2, IN4→A3"));
-    Serial.println(F("              Wire them as IN1→A3, IN2→A2, IN3→A1, IN4→A0"));
-    Serial.println();
-    Serial.println(F("4. Return to absolute mode:"));
-    Serial.println(F("   G90              ; Set absolute mode"));
-    Serial.println();
-    Serial.println(F(">> Steps/Degree Calibration:"));
-    Serial.println(F("1. Mark current position on each joint"));
-    Serial.println(F("2. G91              ; Relative mode"));
-    Serial.println(F("3. G0 T190 F30      ; Move joint 1 by 90 degrees"));
-    Serial.println(F("4. Measure actual rotation with protractor"));
-    Serial.println(F("5. If moved X degrees instead of 90:"));
-    Serial.println(F("   New_value = (90 / X) * 5.0"));
-    Serial.println(F("   Update STEPS_PER_DEGREE in Config_Robot.h"));
-    Serial.println();
-    Serial.println(F(">> Gripper Calibration:"));
-    Serial.println(F("1. M6               ; Home gripper (fully open)"));
-    Serial.println(F("2. Measure jaw opening with calipers"));
-    Serial.println(F("3. M3 S10           ; Command 10mm movement"));
-    Serial.println(F("4. Measure new jaw opening"));
-    Serial.println(F("5. If moved X mm instead of 10:"));
-    Serial.println(F("   New_value = (10 / X) * 409.6"));
-    Serial.println(F("   Update GRIPPER_STEPS_PER_MM in Config_Robot.h"));
-    
-    Serial.println(F("\n--- COMMON ISSUES ---"));
-    Serial.println(F("\nMotors not moving?"));
-    Serial.println(F("  → Send M17 to enable motors"));
-    Serial.println(F("  → Check power supply (12V for NEMA17)"));
-    Serial.println(F("  → Verify wiring matches Config_Pinout.h"));
-    Serial.println();
-    Serial.println(F("Position inaccurate?"));
-    Serial.println(F("  → Manually position at home before power-on"));
-    Serial.println(F("  → Send G28 to reset to home position"));
-    Serial.println(F("  → Calibrate STEPS_PER_DEGREE (see above)"));
-    Serial.println();
-    Serial.println(F("Movement fails?"));
-    Serial.println(F("  → Check joint limits with M114"));
-    Serial.println(F("  → Position may be outside workspace"));
-    Serial.println(F("  → Try intermediate positions"));
-    Serial.println();
-    Serial.println(F("Motor moves wrong direction?"));
-    Serial.println(F("  → Set MOTOR_X_INVERT=true in Config_Robot.h"));
-    Serial.println(F("  → Or swap motor wiring physically"));
-    Serial.println();
-    Serial.println(F("Gripper wrong direction?"));
-    Serial.println(F("  → Reverse all 4 wires on ULN2003 board"));
-    Serial.println(F("  → Keep Config_Pinout.h unchanged"));
-    Serial.println();
-    Serial.println(F("Gripper position inaccurate?"));
-    Serial.println(F("  → Calibrate GRIPPER_STEPS_PER_MM (see above)"));
-    Serial.println(F("  → Send M6 to re-home"));
-    
-    Serial.println(F("\n========================================\n"));
 }

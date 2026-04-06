@@ -63,9 +63,10 @@ private:
     // Helper functions
     bool parseLine(const String& line, GCodeCommand& cmd);
     bool executeCommand(const GCodeCommand& cmd);
-    void sendResponse(const String& message);
     void sendError(const String& error);
     void sendOK();
+    void debugPrintPrefix();
+    void debugPrintln(const __FlashStringHelper* message);
     
     // Command handlers
     bool handleG0G1(const GCodeCommand& cmd);  // Linear move
@@ -79,7 +80,9 @@ private:
     bool handleM3(const GCodeCommand& cmd);    // Gripper close (with S parameter)
     bool handleM5(const GCodeCommand& cmd);    // Gripper open
     bool handleM6(const GCodeCommand& cmd);    // Gripper home
+    bool handleM112(const GCodeCommand& cmd);  // Emergency stop
     bool handleM114(const GCodeCommand& cmd);  // Get current position
+    bool handleM119(const GCodeCommand& cmd);  // Endstop status
     bool handleM400(const GCodeCommand& cmd);  // Wait for moves to finish
     bool handleM3001(const GCodeCommand& cmd); // Get gripper position only
     

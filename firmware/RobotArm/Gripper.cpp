@@ -1,4 +1,5 @@
 #include "Gripper.h"
+#include "Config_Robot.h"
 
 // Half-step sequence for ULN2003 driver (8 steps per cycle)
 // BYJ-48: 4096 steps per revolution in half-step mode
@@ -126,12 +127,23 @@ void BYJ48Gripper::update() {
 
 // --- Private Helper Functions ---
 void BYJ48Gripper::doStep() {
+    int8_t electricalDirection = direction;
+    #if GRIPPER_INVERT_DIRECTION
+    electricalDirection = -electricalDirection;
+    #endif
+
     // Update step sequence position
-    if (direction > 0) {
+    if (electricalDirection > 0) {
         currentStep = (currentStep + 1) % 8;
+    } else if (electricalDirection < 0) {
+        currentStep = (currentStep == 0) ? 7 : currentStep - 1;
+    }
+
+    // Keep logical position semantics unchanged:
+    // positive direction closes, negative direction opens.
+    if (direction > 0) {
         currentSteps++;
     } else if (direction < 0) {
-        currentStep = (currentStep == 0) ? 7 : currentStep - 1;
         currentSteps--;
     }
     
