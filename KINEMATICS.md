@@ -115,7 +115,7 @@ Forward kinematics is evaluated directly from the joint state.
 ### 6.1 Solve theta1 from x and z
 
 $$
-R = \sqrt{x^2 + z^2}, \quad \theta_1 = \operatorname{atan2}(z, x)
+R = \sqrt{x^2 + z^2}, \quad \theta_1 = \mathrm{atan2}(z, x)
 $$
 
 ### 6.2 Reduce to side-plane problem (theta2, theta3)
@@ -141,7 +141,7 @@ $$
 Then compute:
 
 $$
-\alpha = \operatorname{atan2}(B, A), \quad \phi = \arccos\left(\frac{C}{\sqrt{A^2 + B^2}}\right)
+\alpha = \mathrm{atan2}(B, A), \quad \phi = \arccos\left(\frac{C}{\sqrt{A^2 + B^2}}\right)
 $$
 
 $$
@@ -163,7 +163,7 @@ $$
 $$
 
 $$
-\theta_2 = \operatorname{atan2}(\sin\theta_2, \cos\theta_2)
+\theta_2 = \mathrm{atan2}(\sin\theta_2, \cos\theta_2)
 $$
 
 Both branches are evaluated, and any solution outside joint limits is rejected.
