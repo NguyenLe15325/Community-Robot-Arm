@@ -18,6 +18,9 @@ Current behavior summary:
 - Software-only homing fallback supported when no endstops are installed
 - Emergency stop command available (`M112` and `!` alias)
 
+Detailed kinematics and workspace explanation:
+- [Kinematics notes with asset figures](KINEMATICS.md)
+
 ## Repository Layout
 
 ```
