@@ -60,9 +60,7 @@ MotorConfig motor3Config = {
 // ====================================================================
 
 MotionParams defaultMotion = {
-    .maxSpeed = DEFAULT_MAX_SPEED,
-    .acceleration = DEFAULT_ACCELERATION,
-    .jerk = DEFAULT_JERK
+    .maxSpeed = DEFAULT_MAX_SPEED
 };
 
 // ====================================================================

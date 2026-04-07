@@ -1,6 +1,13 @@
 #include "GCode.h"
 #include "Config_Robot.h"
 
+static float gripperMmPerSecToStepsPerSec(float speedMmPerSec) {
+    if (speedMmPerSec < 0.0f) {
+        speedMmPerSec = -speedMmPerSec;
+    }
+    return speedMmPerSec * GRIPPER_STEPS_PER_MM;
+}
+
 // --- Initialization ---
 void GCodeParser::begin(NEMA17Controller* controller, BYJ48Gripper* gripperController) {
     motor = controller;
@@ -9,7 +16,7 @@ void GCodeParser::begin(NEMA17Controller* controller, BYJ48Gripper* gripperContr
     inputBuffer = "";
     inputBuffer.reserve(128);
     absoluteMode = true;
-    currentFeedrate = 60.0; // Default 60 deg/s or mm/s depending on mode
+    currentFeedrate = 60.0; // Default 60 deg/s (joint-space speed)
     
     // Initialize delay state
     delaying = false;
@@ -227,6 +234,7 @@ bool GCodeParser::executeCommand(const GCodeCommand& cmd) {
             case 112: return handleM112(cmd);
             case 114: return handleM114(cmd);
             case 119: return handleM119(cmd);
+            case 205: return handleM205(cmd);
             case 400: return handleM400(cmd);
             case 3001: return handleM3001(cmd);
             default:
@@ -444,8 +452,9 @@ bool GCodeParser::handleM3(const GCodeCommand& cmd) {
         return false;
     }
     
-    float speed = 300.0; // Default speed
-    if (cmd.hasF) speed = cmd.f;
+    float speedMmPerSec = GRIPPER_DEFAULT_SPEED;
+    if (cmd.hasF) speedMmPerSec = cmd.f;
+    float speedStepsPerSec = gripperMmPerSecToStepsPerSec(speedMmPerSec);
     
     if (cmd.hasS) {
         // Move to specific position
@@ -453,18 +462,18 @@ bool GCodeParser::handleM3(const GCodeCommand& cmd) {
             debugPrintPrefix();
             Serial.print(F("M3 setpoint [mm] S="));
             Serial.print(cmd.s);
-            Serial.print(F(" F="));
-            Serial.println(speed);
+            Serial.print(F(" F(mm/s)="));
+            Serial.println(speedMmPerSec, 2);
         }
-        gripper->moveToPosition(cmd.s, speed);
+        gripper->moveToPosition(cmd.s, speedStepsPerSec);
     } else {
         // Close gripper fully
         if (verboseMode) {
             debugPrintPrefix();
-            Serial.print(F("M3 close F="));
-            Serial.println(speed);
+            Serial.print(F("M3 close F(mm/s)="));
+            Serial.println(speedMmPerSec, 2);
         }
-        gripper->close(speed);
+        gripper->close(speedStepsPerSec);
     }
     
     return true;
@@ -477,15 +486,16 @@ bool GCodeParser::handleM5(const GCodeCommand& cmd) {
         return false;
     }
     
-    float speed = 300.0; // Default speed
-    if (cmd.hasF) speed = cmd.f;
+    float speedMmPerSec = GRIPPER_DEFAULT_SPEED;
+    if (cmd.hasF) speedMmPerSec = cmd.f;
+    float speedStepsPerSec = gripperMmPerSecToStepsPerSec(speedMmPerSec);
     
     if (verboseMode) {
         debugPrintPrefix();
-        Serial.print(F("M5 open F="));
-        Serial.println(speed);
+        Serial.print(F("M5 open F(mm/s)="));
+        Serial.println(speedMmPerSec, 2);
     }
-    gripper->open(speed);
+    gripper->open(speedStepsPerSec);
     
     return true;
 }
@@ -497,16 +507,17 @@ bool GCodeParser::handleM6(const GCodeCommand& cmd) {
         return false;
     }
     
-    float speed = 200.0; // Default homing speed
-    if (cmd.hasF) speed = cmd.f;
+    float speedMmPerSec = GRIPPER_HOMING_SPEED;
+    if (cmd.hasF) speedMmPerSec = cmd.f;
+    float speedStepsPerSec = gripperMmPerSecToStepsPerSec(speedMmPerSec);
     
     if (verboseMode) {
         debugPrintPrefix();
-        Serial.print(F("M6 start F="));
-        Serial.println(speed);
+        Serial.print(F("M6 start F(mm/s)="));
+        Serial.println(speedMmPerSec, 2);
     }
     
-    gripper->home(speed);
+    gripper->home(speedStepsPerSec);
     
     // Wait for homing to complete
     while (gripper->isMoving()) {
@@ -571,6 +582,32 @@ bool GCodeParser::handleM119(const GCodeCommand& cmd) {
     return true;
 }
 
+bool GCodeParser::handleM205(const GCodeCommand& cmd) {
+    // M205 S<rampPortion> F<minSpeedScale>
+    // - no params: query current smoothing
+    // - with S/F: set one or both values (clamped by motor controller)
+    float rampPortion = 0.0f;
+    float minSpeedScale = 0.0f;
+    motor->getMotionSmoothing(rampPortion, minSpeedScale);
+
+    if (cmd.hasS || cmd.hasF) {
+        if (cmd.hasS) {
+            rampPortion = cmd.s;
+        }
+        if (cmd.hasF) {
+            minSpeedScale = cmd.f;
+        }
+        motor->setMotionSmoothing(rampPortion, minSpeedScale);
+        motor->getMotionSmoothing(rampPortion, minSpeedScale);
+    }
+
+    Serial.print(F("SMOOTH:RAMP="));
+    Serial.print(rampPortion, 3);
+    Serial.print(F(" MIN="));
+    Serial.println(minSpeedScale, 3);
+    return true;
+}
+
 bool GCodeParser::handleM400(const GCodeCommand& cmd) {
     // Wait for all moves to finish
     debugPrintln(F("M400 wait start"));
@@ -619,8 +656,8 @@ bool GCodeParser::handleM3001(const GCodeCommand& cmd) {
 void GCodeParser::printHelp() {
     Serial.println(F("CMD: G0/G1 X..Y..Z.. F | T1..T2..T3.. F"));
     Serial.println(F("CMD: G4 P | G28 [F] | G90/G91"));
-    Serial.println(F("CMD: M17 M18/M84 M112 M114 M119 M400 HELP"));
+    Serial.println(F("CMD: M17 M18/M84 M112 M114 M119 M205 M400 HELP"));
     if (gripper) {
-        Serial.println(F("CMD: M3 M3 S<mm> M5 M6 M3001"));
+        Serial.println(F("CMD: M3 [S<mm>] [F<mm/s>] M5 [F<mm/s>] M6 [F<mm/s>] M3001"));
     }
 }

@@ -55,17 +55,22 @@
 
 // --- Speed Settings (degrees/second) ---
 #define DEFAULT_MAX_SPEED       90.0        // Maximum rotational speed
-#define DEFAULT_ACCELERATION    200.0       // Acceleration rate
-#define DEFAULT_JERK            1000.0      // Jerk limit (future use)
 
 // --- Feedrate Settings ---
-#define DEFAULT_FEEDRATE        60.0        // Default feedrate (deg/s or mm/s)
+#define DEFAULT_FEEDRATE        60.0        // Default feedrate (joint-space deg/s)
 #define HOMING_FEEDRATE         30.0        // Homing speed (slower for safety)
 
-// --- Speed Presets (Optional) ---
-#define SPEED_SLOW              45.0        // Conservative speed
-#define SPEED_NORMAL            90.0        // Balanced speed
-#define SPEED_FAST              120.0       // Aggressive speed
+// --- Motion Smoothing Profile (simple eased trapezoid) ---
+// Ramp portion is the accel/decel zone fraction at each move edge.
+// Min speed scale is the floor ratio relative to cruise speed.
+#define MOVE_SMOOTHING_RAMP_PORTION_DEFAULT      0.20f
+#define MOVE_SMOOTHING_MIN_SPEED_SCALE_DEFAULT   0.35f
+
+// Runtime clamp limits for M205 tuning.
+#define MOVE_SMOOTHING_RAMP_PORTION_MIN          0.05f
+#define MOVE_SMOOTHING_RAMP_PORTION_MAX          0.45f
+#define MOVE_SMOOTHING_MIN_SPEED_SCALE_MIN       0.10f
+#define MOVE_SMOOTHING_MIN_SPEED_SCALE_MAX       1.00f
 
 
 // ====================================================================
@@ -91,19 +96,18 @@
 #define GRIPPER_MAX_POSITION    30.0        // Fully closed (mm)
 
 // --- Gripper Speed ---
-#define GRIPPER_DEFAULT_SPEED   300.0       // Default speed (steps/second)
-#define GRIPPER_HOMING_SPEED    200.0       // Homing speed (steps/second)
+#define GRIPPER_DEFAULT_SPEED   4.4         // Default speed (mm/s)
+#define GRIPPER_HOMING_SPEED    2.9         // Homing speed (mm/s)
 
 // --- Gripper Direction ---
 // Set true to reverse gripper motion direction in firmware (no rewiring required).
 #define GRIPPER_INVERT_DIRECTION false
 
 // --- GRIPPER SPEED NOTES ---
-// • This define is informational only - actual defaults are hardcoded in Gcode.cpp
-// • To change default speeds, modify handleM3() and handleM6() in Gcode.cpp
-// • G-code commands can override speed with F parameter: M3 F400
-// • Valid range: 1-500 steps/second (enforced in Gripper.cpp)
-// • Adjust limits in Gripper.cpp if needed for your hardware
+// • G-code F for M3/M5/M6 is interpreted as mm/s.
+// • Firmware converts mm/s to steps/s using GRIPPER_STEPS_PER_MM.
+// • Internal stepper limits are 1-500 steps/second (enforced in Gripper.cpp).
+// • Effective mm/s range is approximately: [1/GRIPPER_STEPS_PER_MM, 500/GRIPPER_STEPS_PER_MM].
 
 
 // ====================================================================

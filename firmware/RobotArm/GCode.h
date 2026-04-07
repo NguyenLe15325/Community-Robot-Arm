@@ -83,6 +83,7 @@ private:
     bool handleM112(const GCodeCommand& cmd);  // Emergency stop
     bool handleM114(const GCodeCommand& cmd);  // Get current position
     bool handleM119(const GCodeCommand& cmd);  // Endstop status
+    bool handleM205(const GCodeCommand& cmd);  // Motion smoothing (query/set)
     bool handleM400(const GCodeCommand& cmd);  // Wait for moves to finish
     bool handleM3001(const GCodeCommand& cmd); // Get gripper position only
     

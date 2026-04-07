@@ -94,10 +94,12 @@ Important fields:
 	- `SERIAL_BAUD_RATE`
 	- `SERIAL_TIMEOUT_MS`
 - Motion:
-	- `STEPS_PER_DEGREE`
-	- `DEFAULT_MAX_SPEED`
-	- `DEFAULT_ACCELERATION`
-	- `DEFAULT_FEEDRATE`
+	- `STEPS_PER_DEGREE` (steps/deg)
+	- `DEFAULT_MAX_SPEED` (deg/s, NEMA joint-space cap)
+	- `DEFAULT_FEEDRATE` (deg/s, modal arm feedrate used by G0/G1)
+	- `HOMING_FEEDRATE` (deg/s)
+	- `MOVE_SMOOTHING_RAMP_PORTION_DEFAULT`
+	- `MOVE_SMOOTHING_MIN_SPEED_SCALE_DEFAULT`
 - Inversions:
 	- `MOTOR1_INVERT`, `MOTOR2_INVERT`, `MOTOR3_INVERT`
 	- `GRIPPER_INVERT_DIRECTION`
@@ -171,23 +173,33 @@ arduino-cli upload -p COM3 --fqbn arduino:avr:nano firmware/RobotArm
 
 ## Supported Commands
 
+This is the complete command set currently implemented in firmware.
+
 ### Motion and Modes
 
 | Command | Description |
 |---|---|
 | `G0` / `G1` | Move command (joint or Cartesian) |
 | `G4 P<ms>` | Dwell (non-blocking state machine) |
-| `G28 [F<feedrate>]` | Home arm |
+| `G28 [F<deg/s>]` | Home arm (NEMA homing speed) |
 | `G90` | Absolute Cartesian mode |
 | `G91` | Relative Cartesian mode |
 
 `G0/G1` parameter options:
 - Joint space: `T1<deg>`, `T2<deg>`, `T3<deg>`
 - Cartesian: `X`, `Y`, `Z` (mm)
-- Feedrate: `F`
+- Feedrate: `F<deg/s>` (NEMA joint-space speed)
+
+Feedrate units and scope (explicit):
+- `G0/G1 F<deg/s>`: arm/NEMA feedrate in joint space. This applies to both joint commands (`T1/T2/T3`) and Cartesian commands (`X/Y/Z`, after IK).
+- `G0/G1 F` is modal: once set, it remains active for later `G0/G1` moves until changed.
+- `G28 F<deg/s>`: arm/NEMA homing seek feedrate.
+- `M3/M5/M6 F<mm/s>`: gripper linear speed (converted internally to steps/s using `GRIPPER_STEPS_PER_MM`).
+- `M205 S.. F..`: smoothing tuner; both values are unitless. `F` in `M205` is not a motion feedrate.
 
 Parameter format note:
 - No space between letter and value (example: `T110`, `T295`, `T3-5`, `X120`, `F40`).
+- `G4 F<ms>` is also accepted by the parser (legacy-compatible with internal parameter handling).
 
 ### Motor Power and Status
 
@@ -198,6 +210,7 @@ Parameter format note:
 | `M84` | Alias of `M18` |
 | `M114` | Print Cartesian + joint state |
 | `M119` | Print endstop states |
+| `M205 [S<ramp>] [F<min>]` | Query/set motion smoothing profile (both unitless) |
 | `M400` | Wait until arm motion queue is done |
 | `HELP` | Print compact command help |
 
@@ -205,11 +218,13 @@ Parameter format note:
 
 | Command | Description |
 |---|---|
-| `M3` | Close gripper fully |
-| `M3 S<mm>` | Move gripper to target position |
-| `M5` | Open gripper |
-| `M6` | Home gripper and zero position |
+| `M3 [F<mm/s>]` | Close gripper fully |
+| `M3 S<mm> [F<mm/s>]` | Move gripper to target position |
+| `M5 [F<mm/s>]` | Open gripper |
+| `M6 [F<mm/s>]` | Home gripper and zero position |
 | `M3001` | Print gripper position |
+
+For gripper commands (`M3`, `M5`, `M6`), `F` is interpreted as mm/s.
 
 ### Emergency
 
@@ -217,6 +232,9 @@ Parameter format note:
 |---|---|
 | `M112` | Immediate emergency stop |
 | `!` | Quick alias for `M112` |
+
+Additional immediate emergency byte:
+- Ctrl-X (`0x18`) is also treated as an emergency-stop trigger during blocking loops (homing/wait/dwell paths).
 
 After `M112`, motors are stopped and disabled. Re-enable with `M17` before new arm moves.
 
@@ -229,8 +247,8 @@ G28 F20
 M114
 G90
 G1 T110 T295 T3-5 F40
-M3 S10 F250
-M5 F250
+M3 S10 F4.0
+M5 F4.0
 M400
 ```
 

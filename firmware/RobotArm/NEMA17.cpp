@@ -39,8 +39,6 @@ void NEMA17Controller::begin(const MotorConfig& motor1, const MotorConfig& motor
     
     // Set default motion parameters
     motion.maxSpeed = 90.0;        // 90 deg/s
-    motion.acceleration = 200.0;   // 200 deg/s²
-    motion.jerk = 1000.0;
     
     // Initialize to home position: theta1=0, theta2=90, theta3=0
     currentAngles.theta1 = 0.0;
@@ -55,7 +53,13 @@ void NEMA17Controller::begin(const MotorConfig& motor1, const MotorConfig& motor
     for (int i = 0; i < 3; i++) {
         targetSteps[i] = currentSteps[i];  // Target = current (no movement)
         lastStepTime[i] = 0;
+        moveStartSteps[i] = currentSteps[i];
     }
+
+    leadAxisSteps = 0;
+    leadAxisIndex = 0;
+    moveRampPortion = MOVE_SMOOTHING_RAMP_PORTION_DEFAULT;
+    moveMinSpeedScale = MOVE_SMOOTHING_MIN_SPEED_SCALE_DEFAULT;
 
     emergencyStopLatched = false;
 }
@@ -72,6 +76,28 @@ void NEMA17Controller::disable() {
 
 void NEMA17Controller::setMotionParams(const MotionParams& params) {
     motion = params;
+}
+
+void NEMA17Controller::setMotionSmoothing(float rampPortion, float minSpeedScale) {
+    if (rampPortion < MOVE_SMOOTHING_RAMP_PORTION_MIN) {
+        rampPortion = MOVE_SMOOTHING_RAMP_PORTION_MIN;
+    } else if (rampPortion > MOVE_SMOOTHING_RAMP_PORTION_MAX) {
+        rampPortion = MOVE_SMOOTHING_RAMP_PORTION_MAX;
+    }
+
+    if (minSpeedScale < MOVE_SMOOTHING_MIN_SPEED_SCALE_MIN) {
+        minSpeedScale = MOVE_SMOOTHING_MIN_SPEED_SCALE_MIN;
+    } else if (minSpeedScale > MOVE_SMOOTHING_MIN_SPEED_SCALE_MAX) {
+        minSpeedScale = MOVE_SMOOTHING_MIN_SPEED_SCALE_MAX;
+    }
+
+    moveRampPortion = rampPortion;
+    moveMinSpeedScale = minSpeedScale;
+}
+
+void NEMA17Controller::getMotionSmoothing(float& rampPortion, float& minSpeedScale) const {
+    rampPortion = moveRampPortion;
+    minSpeedScale = moveMinSpeedScale;
 }
 
 // --- Homing ---
@@ -141,6 +167,10 @@ bool NEMA17Controller::moveToAngles(const JointAngles& target, float feedrate) {
     targetSteps[0] = anglesToSteps(0, target.theta1);
     targetSteps[1] = anglesToSteps(1, target.theta2);
     targetSteps[2] = anglesToSteps(2, target.theta3);
+
+    for (int i = 0; i < 3; i++) {
+        moveStartSteps[i] = currentSteps[i];
+    }
     
     // Calculate coordinated motion profile
     calculateCoordinatedMotion(target, feedrate);
@@ -214,13 +244,38 @@ void NEMA17Controller::update() {
     
     unsigned long now = micros();
     bool allComplete = true;
+
+    // Shared speed scale keeps axis ratios intact while easing start/stop.
+    float speedScale = 1.0f;
+    if (leadAxisSteps > 0) {
+        long progressed = abs(currentSteps[leadAxisIndex] - moveStartSteps[leadAxisIndex]);
+        float progress = (float)progressed / (float)leadAxisSteps;
+
+        if (progress < 0.0f) progress = 0.0f;
+        if (progress > 1.0f) progress = 1.0f;
+
+        if (progress < moveRampPortion) {
+            speedScale = progress / moveRampPortion;
+        } else if (progress > (1.0f - moveRampPortion)) {
+            speedScale = (1.0f - progress) / moveRampPortion;
+        }
+
+        if (speedScale < moveMinSpeedScale) {
+            speedScale = moveMinSpeedScale;
+        }
+    }
     
     for (int i = 0; i < 3; i++) {
         if (currentSteps[i] != targetSteps[i]) {
             allComplete = false;
+
+            unsigned long dynamicDelay = (unsigned long)(stepDelays[i] / speedScale);
+            if (dynamicDelay < 50UL) {
+                dynamicDelay = 50UL;
+            }
             
             // Check if enough time has passed for next step
-            if (now - lastStepTime[i] >= stepDelays[i]) {
+            if (now - lastStepTime[i] >= dynamicDelay) {
                 stepMotor(i);
                 lastStepTime[i] = now;
             }
@@ -249,13 +304,17 @@ void NEMA17Controller::calculateCoordinatedMotion(const JointAngles& target, flo
     // Calculate step differences
     long stepDiffs[3];
     long maxSteps = 0;
+    leadAxisIndex = 0;
     
     for (int i = 0; i < 3; i++) {
         stepDiffs[i] = abs(targetSteps[i] - currentSteps[i]);
         if (stepDiffs[i] > maxSteps) {
             maxSteps = stepDiffs[i];
+            leadAxisIndex = i;
         }
     }
+
+    leadAxisSteps = maxSteps;
     
     if (maxSteps == 0) {
         moving = false;

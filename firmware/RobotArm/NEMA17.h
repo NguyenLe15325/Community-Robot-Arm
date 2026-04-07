@@ -15,8 +15,6 @@ struct MotorConfig {
 // --- Motion Parameters ---
 struct MotionParams {
     float maxSpeed;         // Maximum speed in degrees/second
-    float acceleration;     // Acceleration in degrees/second²
-    float jerk;            // Jerk limit (optional, for smoother motion)
 };
 
 class NEMA17Controller {
@@ -44,6 +42,18 @@ public:
      * @brief Set motion parameters for coordinated movement
      */
     void setMotionParams(const MotionParams& params);
+
+    /**
+     * @brief Configure simple easing profile for move start/end.
+     * @param rampPortion Fraction of move used for accel/decel zones.
+     * @param minSpeedScale Minimum speed scale at the move edges.
+     */
+    void setMotionSmoothing(float rampPortion, float minSpeedScale);
+
+    /**
+     * @brief Read active easing profile values.
+     */
+    void getMotionSmoothing(float& rampPortion, float& minSpeedScale) const;
     
     /**
         * @brief Home robot
@@ -128,8 +138,13 @@ private:
     
     // Target state for coordinated motion
     long targetSteps[3];
-    float stepDelays[3];      // Microseconds between steps for each motor
+    float stepDelays[3];      // Cruise microseconds between steps for each motor
     unsigned long lastStepTime[3];
+    long moveStartSteps[3];
+    long leadAxisSteps;
+    uint8_t leadAxisIndex;
+    float moveRampPortion;
+    float moveMinSpeedScale;
 
     // Endstop pins (theta1, theta2, theta3)
     uint8_t endstopPins[3];
