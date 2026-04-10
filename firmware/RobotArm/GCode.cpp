@@ -1,13 +1,6 @@
 #include "GCode.h"
 #include "Config_Robot.h"
 
-static float gripperMmPerSecToStepsPerSec(float speedMmPerSec) {
-    if (speedMmPerSec < 0.0f) {
-        speedMmPerSec = -speedMmPerSec;
-    }
-    return speedMmPerSec * GRIPPER_STEPS_PER_MM;
-}
-
 // --- Initialization ---
 void GCodeParser::begin(NEMA17Controller* controller, BYJ48Gripper* gripperController) {
     motor = controller;
@@ -454,7 +447,7 @@ bool GCodeParser::handleM3(const GCodeCommand& cmd) {
     
     float speedMmPerSec = GRIPPER_DEFAULT_SPEED;
     if (cmd.hasF) speedMmPerSec = cmd.f;
-    float speedStepsPerSec = gripperMmPerSecToStepsPerSec(speedMmPerSec);
+    float speedStepsPerSec = gripper->mmPerSecToStepsPerSec(speedMmPerSec);
     
     if (cmd.hasS) {
         // Move to specific position
@@ -488,7 +481,7 @@ bool GCodeParser::handleM5(const GCodeCommand& cmd) {
     
     float speedMmPerSec = GRIPPER_DEFAULT_SPEED;
     if (cmd.hasF) speedMmPerSec = cmd.f;
-    float speedStepsPerSec = gripperMmPerSecToStepsPerSec(speedMmPerSec);
+    float speedStepsPerSec = gripper->mmPerSecToStepsPerSec(speedMmPerSec);
     
     if (verboseMode) {
         debugPrintPrefix();
@@ -509,7 +502,7 @@ bool GCodeParser::handleM6(const GCodeCommand& cmd) {
     
     float speedMmPerSec = GRIPPER_HOMING_SPEED;
     if (cmd.hasF) speedMmPerSec = cmd.f;
-    float speedStepsPerSec = gripperMmPerSecToStepsPerSec(speedMmPerSec);
+    float speedStepsPerSec = gripper->mmPerSecToStepsPerSec(speedMmPerSec);
     
     if (verboseMode) {
         debugPrintPrefix();

@@ -107,6 +107,20 @@ void BYJ48Gripper::home(float speed) {
     open(speed);
 }
 
+float BYJ48Gripper::mmPerSecToStepsPerSec(float speedMmPerSec) const {
+    if (speedMmPerSec < 0.0f) {
+        speedMmPerSec = -speedMmPerSec;
+    }
+
+    // Guard against invalid configuration while preserving a usable conversion.
+    float stepsPerMM = config.stepsPerMM;
+    if (stepsPerMM <= 0.0f) {
+        stepsPerMM = 1.0f;
+    }
+
+    return speedMmPerSec * stepsPerMM;
+}
+
 // --- Update Loop ---
 void BYJ48Gripper::update() {
     if (!moving || !enabled) return;

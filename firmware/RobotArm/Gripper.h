@@ -91,6 +91,13 @@ public:
      */
     void home(float speed = 200.0);
 
+    /**
+     * @brief Convert gripper linear speed from mm/s to motor steps/s.
+     * @param speedMmPerSec Requested linear speed in mm/s.
+     * @return Equivalent speed in steps/second (non-negative).
+     */
+    float mmPerSecToStepsPerSec(float speedMmPerSec) const;
+
 private:
     GripperConfig config;
     
