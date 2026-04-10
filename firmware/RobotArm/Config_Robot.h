@@ -58,7 +58,7 @@
 
 // --- Feedrate Settings ---
 #define DEFAULT_FEEDRATE        60.0        // Default feedrate (joint-space deg/s)
-#define HOMING_FEEDRATE         30.0        // Homing speed (slower for safety)
+#define HOMING_FEEDRATE         40.0        // Homing speed (slower for safety)
 
 // --- Motion Smoothing Profile (simple eased trapezoid) ---
 // Ramp portion is the accel/decel zone fraction at each move edge.
@@ -96,12 +96,12 @@
 #define GRIPPER_MAX_POSITION    30.0        // Fully closed (mm)
 
 // --- Gripper Speed ---
-#define GRIPPER_DEFAULT_SPEED   4.4         // Default speed (mm/s)
-#define GRIPPER_HOMING_SPEED    2.9         // Homing speed (mm/s)
+#define GRIPPER_DEFAULT_SPEED   30         // Default speed (mm/s)
+#define GRIPPER_HOMING_SPEED    20         // Homing speed (mm/s)
 
 // --- Gripper Direction ---
 // Set true to reverse gripper motion direction in firmware (no rewiring required).
-#define GRIPPER_INVERT_DIRECTION false
+#define GRIPPER_INVERT_DIRECTION true
 
 // --- GRIPPER SPEED NOTES ---
 // • G-code F for M3/M5/M6 is interpreted as mm/s.
@@ -145,9 +145,9 @@
 // Positive offset = theta increases, negative offset = theta decreases.
 // angle_to_step = STEPS_PER_DEGREE (already includes microstep mode and belt reduction ratio).
 // Initial estimate below; fine-tune each axis after first homing tests.
-#define HOME_OFFSET_STEPS_THETA1        -1800L // -((theta1_max - theta1_home) * angle_to_step) = -((90 - 0) * 20) = -1800
-#define HOME_OFFSET_STEPS_THETA2         -800L // -((theta2_max - theta2_home) * angle_to_step) = -((130 - 90) * 20) = -800
-#define HOME_OFFSET_STEPS_THETA3          340L // +((theta3_home - theta3_min) * angle_to_step) = +((0 - (-17)) * 20) = +340
+#define HOME_OFFSET_STEPS_THETA1        -1800L // -((theta1_max - theta1_home) * angle_to_step) = -((90 - 0) * 20) = -1800 // Approx
+#define HOME_OFFSET_STEPS_THETA2         -870L // -((theta2_max - theta2_home) * angle_to_step) = -((130 - 90) * 20) = -800 // Approx
+#define HOME_OFFSET_STEPS_THETA3          300L // +((theta3_home - theta3_min) * angle_to_step) = +((0 - (-17)) * 20) = +340 // Approx
 
 // Homing safety limits
 #define HOMING_SWITCH_DEBOUNCE_COUNT    3    // Consecutive reads required
@@ -158,8 +158,8 @@
 
 // Homing speeds (deg/s)
 #define HOMING_SEEK_FEEDRATE            HOMING_FEEDRATE
-#define HOMING_RELEASE_FEEDRATE         20.0
-#define HOMING_OFFSET_FEEDRATE          20.0
+#define HOMING_RELEASE_FEEDRATE         HOMING_FEEDRATE
+#define HOMING_OFFSET_FEEDRATE          30.0
 
 
 // ====================================================================

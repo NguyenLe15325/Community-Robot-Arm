@@ -38,7 +38,7 @@ void NEMA17Controller::begin(const MotorConfig& motor1, const MotorConfig& motor
     enabled = false;
     
     // Set default motion parameters
-    motion.maxSpeed = 90.0;        // 90 deg/s
+    motion.maxSpeed = DEFAULT_MAX_SPEED;        // 90 deg/s
     
     // Initialize to home position: theta1=0, theta2=90, theta3=0
     currentAngles.theta1 = 0.0;

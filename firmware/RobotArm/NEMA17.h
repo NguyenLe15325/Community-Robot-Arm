@@ -32,6 +32,12 @@ public:
      * @brief Enable all motors
      */
     void enable();
+
+    /**
+     * @brief Query whether the motor drivers are currently enabled.
+     * @return true when enabled (drivers powered), false when disabled.
+     */
+    bool isEnabled() const { return enabled; }
     
     /**
      * @brief Disable all motors (reduces power consumption & heat)

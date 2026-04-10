@@ -9,7 +9,7 @@ void GCodeParser::begin(NEMA17Controller* controller, BYJ48Gripper* gripperContr
     inputBuffer = "";
     inputBuffer.reserve(128);
     absoluteMode = true;
-    currentFeedrate = 60.0; // Default 60 deg/s (joint-space speed)
+    currentFeedrate = DEFAULT_FEEDRATE; // Default feedrate (deg/s) from Config_Robot.h
     
     // Initialize delay state
     delaying = false;
@@ -245,6 +245,13 @@ bool GCodeParser::handleG0G1(const GCodeCommand& cmd) {
     // Update feedrate if provided
     if (cmd.hasF) {
         currentFeedrate = cmd.f;
+    }
+
+    // Require motors enabled for user move commands. Homing (G28) intentionally
+    // enables motors on its own; user-facing moves should request `M17` first.
+    if (motor && !motor->isEnabled()) {
+        sendError("Motors disabled; send M17 to enable motors before moves");
+        return false;
     }
     
     // Check if we have joint angles (T1/T2/T3) or Cartesian (X/Y/Z)
