@@ -96,8 +96,8 @@
 #define GRIPPER_MAX_POSITION    30.0        // Fully closed (mm)
 
 // --- Gripper Speed ---
-#define GRIPPER_DEFAULT_SPEED   30         // Default speed (mm/s)
-#define GRIPPER_HOMING_SPEED    20         // Homing speed (mm/s)
+#define GRIPPER_DEFAULT_SPEED   15         // Default speed (mm/s)
+#define GRIPPER_HOMING_SPEED    10         // Homing speed (mm/s)
 
 // --- Gripper Direction ---
 // Set true to reverse gripper motion direction in firmware (no rewiring required).
@@ -158,7 +158,7 @@
 
 // Homing speeds (deg/s)
 #define HOMING_SEEK_FEEDRATE            HOMING_FEEDRATE
-#define HOMING_RELEASE_FEEDRATE         HOMING_FEEDRATE
+#define HOMING_RELEASE_FEEDRATE         30.0
 #define HOMING_OFFSET_FEEDRATE          30.0
 
 

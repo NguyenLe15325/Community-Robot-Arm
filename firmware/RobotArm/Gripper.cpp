@@ -49,7 +49,7 @@ bool BYJ48Gripper::moveToPosition(float position, float speed) {
     
     // Calculate step delay from speed
     if (speed < 1.0) speed = 1.0;
-    if (speed > 500.0) speed = 500.0;
+    if (speed > 1200.0) speed = 1200.0;
     stepDelay = (unsigned long)(1000000.0 / speed);
     
     // Determine direction
