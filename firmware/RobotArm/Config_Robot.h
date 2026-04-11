@@ -98,6 +98,12 @@
 // --- Gripper Speed ---
 #define GRIPPER_DEFAULT_SPEED   15         // Default speed (mm/s)
 #define GRIPPER_HOMING_SPEED    10         // Homing speed (mm/s)
+// Default relative move distance for open/close commands (mm)
+#define GRIPPER_RELATIVE_MOVE_MM 5.0f       // Default relative open/close amount (mm)
+// Maximum allowed relative move per single command (mm). This is a per-command clamp
+// to prevent absurd requests like `M5 S9999999`. Firmware does not track absolute
+// gripper position for normal operation; this limit only bounds single-command travel.
+#define GRIPPER_RELATIVE_MOVE_MAX GRIPPER_MAX_POSITION
 
 // --- Gripper Direction ---
 // Set true to reverse gripper motion direction in firmware (no rewiring required).
@@ -166,6 +172,7 @@
 // G-CODE PARSER SETTINGS
 // ====================================================================
 
+// Compile-time verbose output toggle: set to true to enable debug strings
 #define GCODE_VERBOSE_MODE      true        // Enable verbose output for debugging
 
 // ====================================================================

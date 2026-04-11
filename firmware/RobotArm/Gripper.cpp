@@ -41,17 +41,15 @@ void BYJ48Gripper::begin(const GripperConfig& cfg) {
 
 // --- Movement Functions ---
 bool BYJ48Gripper::moveToPosition(float position, float speed) {
-    // Clamp position to limits
-    if (position < config.minPosition) position = config.minPosition;
-    if (position > config.maxPosition) position = config.maxPosition;
-    
+    // Do not clamp positions in this firmware variant — allow running into mechanical stops.
+    // Absolute position tracking is deprecated; callers should generally use relative moves.
     targetSteps = positionToSteps(position);
-    
-    // Calculate step delay from speed
+
+    // Calculate step delay from speed (clamped to safe stepper range)
     if (speed < 1.0) speed = 1.0;
-    if (speed > 1200.0) speed = 1200.0;
+    if (speed > 500.0) speed = 500.0;
     stepDelay = (unsigned long)(1000000.0 / speed);
-    
+
     // Determine direction
     if (targetSteps > currentSteps) {
         direction = 1;  // Closing
@@ -62,23 +60,45 @@ bool BYJ48Gripper::moveToPosition(float position, float speed) {
         moving = false;
         return true;
     }
-    
+
     enable();
     moving = true;
     return true;
 }
 
 bool BYJ48Gripper::moveRelative(float distance, float speed) {
-    float targetPos = currentPosition + distance;
-    return moveToPosition(targetPos, speed);
+    // Clamp requested distance per-command to avoid absurd requests.
+    if (distance > GRIPPER_RELATIVE_MOVE_MAX) distance = GRIPPER_RELATIVE_MOVE_MAX;
+    else if (distance < -GRIPPER_RELATIVE_MOVE_MAX) distance = -GRIPPER_RELATIVE_MOVE_MAX;
+
+    long deltaSteps = (long)(distance * config.stepsPerMM);
+    if (deltaSteps == 0) {
+        return true;
+    }
+
+    // Do not rely on absolute position for clamping — perform a relative move by steps.
+    targetSteps = currentSteps + deltaSteps;
+
+    // Clamp speed to safe stepper range
+    if (speed < 1.0) speed = 1.0;
+    if (speed > 500.0) speed = 500.0;
+    stepDelay = (unsigned long)(1000000.0 / speed);
+
+    direction = (deltaSteps > 0) ? 1 : -1;
+
+    enable();
+    moving = true;
+    return true;
 }
 
 void BYJ48Gripper::open(float speed) {
-    moveToPosition(config.minPosition, speed);
+    // Open by a relative amount (negative distance). Default distance controlled by GRIPPER_RELATIVE_MOVE_MM.
+    moveRelative(-GRIPPER_RELATIVE_MOVE_MM, speed);
 }
 
 void BYJ48Gripper::close(float speed) {
-    moveToPosition(config.maxPosition, speed);
+    // Close by a relative amount (positive distance). Default distance controlled by GRIPPER_RELATIVE_MOVE_MM.
+    moveRelative(GRIPPER_RELATIVE_MOVE_MM, speed);
 }
 
 void BYJ48Gripper::stop() {
@@ -102,9 +122,10 @@ void BYJ48Gripper::disable() {
 }
 
 void BYJ48Gripper::home(float speed) {
-    // Home by opening fully
-    // Assumes mechanical stop at fully open position
-    open(speed);
+    // Home by performing a large relative open to reach the mechanical stop.
+    // Absolute zeroing is deprecated; this only attempts to open fully.
+    float distance = -(config.maxPosition + 20.0f); // mm (large open)
+    moveRelative(distance, speed);
 }
 
 float BYJ48Gripper::mmPerSecToStepsPerSec(float speedMmPerSec) const {

@@ -39,14 +39,16 @@ public:
     bool moveRelative(float distance, float speed = 300.0);
     
     /**
-     * @brief Open gripper fully
+     * @brief Open gripper by a relative amount (firmware default)
      * @param speed Speed in steps/second (1-500, default 300)
+     * @note Default distance moved is GRIPPER_RELATIVE_MOVE_MM (mm)
      */
     void open(float speed = 300.0);
     
     /**
-     * @brief Close gripper fully
+     * @brief Close gripper by a relative amount (firmware default)
      * @param speed Speed in steps/second (1-500, default 300)
+     * @note Default distance moved is GRIPPER_RELATIVE_MOVE_MM (mm)
      */
     void close(float speed = 300.0);
     
@@ -67,6 +69,8 @@ public:
     
     /**
      * @brief Get current position in mm
+     * @note Deprecated for relative-only firmware: absolute gripper position is not guaranteed
+     *       to be meaningful. This function is retained for API compatibility.
      */
     float getCurrentPosition() const { return currentPosition; }
     
@@ -82,6 +86,7 @@ public:
     
     /**
      * @brief Set current position as zero reference
+     * @note Deprecated for relative-only firmware: avoid using this; M6 no longer zeroes position.
      */
     void setZero() { currentSteps = 0; currentPosition = 0; }
     

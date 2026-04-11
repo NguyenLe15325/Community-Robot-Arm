@@ -218,13 +218,18 @@ Parameter format note:
 
 | Command | Description |
 |---|---|
-| `M3 [F<mm/s>]` | Close gripper fully |
-| `M3 S<mm> [F<mm/s>]` | Move gripper to target position |
-| `M5 [F<mm/s>]` | Open gripper |
-| `M6 [F<mm/s>]` | Home gripper and zero position |
-| `M3001` | Print gripper position |
+| `M3 [F<mm/s>]` | Close gripper by default relative amount (see `GRIPPER_RELATIVE_MOVE_MM`) |
+| `M3 S<mm> [F<mm/s>]` | Close gripper by S mm (relative, positive = close) |
+| `M5 [F<mm/s>]` | Open gripper by default relative amount (see `GRIPPER_RELATIVE_MOVE_MM`) |
+| `M5 S<mm> [F<mm/s>]` | Open gripper by S mm (relative, positive = open) |
+| `M6 [F<mm/s>]` | Home gripper (relative-only; does not set zero) |
+| `M3001` | Print gripper status (position not tracked) |
 
-For gripper commands (`M3`, `M5`, `M6`), `F` is interpreted as mm/s.
+Notes:
+- For gripper commands (`M3`, `M5`), `F` is interpreted as mm/s and converted internally to steps/s using `GRIPPER_STEPS_PER_MM`.
+- By default `M3`/`M5` perform a relative open/close of `GRIPPER_RELATIVE_MOVE_MM` mm. Use `S<mm>` to provide an explicit relative distance instead.
+- Relative moves are clamped per-command to `GRIPPER_RELATIVE_MOVE_MAX` to prevent absurd requests (for example `M5 S9999999`). Firmware intentionally does not rely on absolute gripper position for normal operation, so each command is bounded independently. The gripper may still stall against a mechanical stop; use `M112`/`!` to abort if necessary.
+- `M6` performs a relative home (large open) but does NOT set the gripper zero reference; absolute position tracking is deprecated.
 
 ### Emergency
 

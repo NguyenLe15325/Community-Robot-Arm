@@ -40,10 +40,10 @@ void GCodeParser::update() {
         }
         return; // Don't process new commands while delaying
     }
-    
+
     while (Serial.available() > 0) {
         char c = Serial.read();
-        
+
         if (c == '\n' || c == '\r') {
             if (inputBuffer.length() > 0) {
                 GCodeCommand cmd;
@@ -263,6 +263,7 @@ bool GCodeParser::handleG0G1(const GCodeCommand& cmd) {
         if (cmd.hasT2) target.theta2 = cmd.t2 * (M_PI / 180.0);
         if (cmd.hasT3) target.theta3 = cmd.t3 * (M_PI / 180.0);
         
+#if 0
         if (verboseMode) {
             debugPrintPrefix();
             Serial.print(F("G0/G1 joint target [deg] T1="));
@@ -272,6 +273,7 @@ bool GCodeParser::handleG0G1(const GCodeCommand& cmd) {
             Serial.print(F(" T3="));
             Serial.println(target.theta3 * 180.0 / M_PI);
         }
+#endif
         
         if (!motor->moveToAngles(target, currentFeedrate)) {
             sendError("Joint movement failed (limits exceeded?)");
@@ -457,20 +459,20 @@ bool GCodeParser::handleM3(const GCodeCommand& cmd) {
     float speedStepsPerSec = gripper->mmPerSecToStepsPerSec(speedMmPerSec);
     
     if (cmd.hasS) {
-        // Move to specific position
+        // Treat S as relative distance (mm): positive = close, negative = open
         if (verboseMode) {
             debugPrintPrefix();
-            Serial.print(F("M3 setpoint [mm] S="));
+            Serial.print(F("M3 relative [mm] S="));
             Serial.print(cmd.s);
             Serial.print(F(" F(mm/s)="));
             Serial.println(speedMmPerSec, 2);
         }
-        gripper->moveToPosition(cmd.s, speedStepsPerSec);
+        gripper->moveRelative(cmd.s, speedStepsPerSec);
     } else {
-        // Close gripper fully
+        // Close gripper by default relative amount
         if (verboseMode) {
             debugPrintPrefix();
-            Serial.print(F("M3 close F(mm/s)="));
+            Serial.print(F("M3 close (relative) F(mm/s)="));
             Serial.println(speedMmPerSec, 2);
         }
         gripper->close(speedStepsPerSec);
@@ -490,18 +492,30 @@ bool GCodeParser::handleM5(const GCodeCommand& cmd) {
     if (cmd.hasF) speedMmPerSec = cmd.f;
     float speedStepsPerSec = gripper->mmPerSecToStepsPerSec(speedMmPerSec);
     
-    if (verboseMode) {
-        debugPrintPrefix();
-        Serial.print(F("M5 open F(mm/s)="));
-        Serial.println(speedMmPerSec, 2);
+    if (cmd.hasS) {
+        // Treat S as relative distance to open (mm)
+        if (verboseMode) {
+            debugPrintPrefix();
+            Serial.print(F("M5 relative open [mm] S="));
+            Serial.print(cmd.s);
+            Serial.print(F(" F(mm/s)="));
+            Serial.println(speedMmPerSec, 2);
+        }
+        gripper->moveRelative(-cmd.s, speedStepsPerSec);
+    } else {
+        if (verboseMode) {
+            debugPrintPrefix();
+            Serial.print(F("M5 open (relative) F(mm/s)="));
+            Serial.println(speedMmPerSec, 2);
+        }
+        gripper->open(speedStepsPerSec);
     }
-    gripper->open(speedStepsPerSec);
     
     return true;
 }
 
 bool GCodeParser::handleM6(const GCodeCommand& cmd) {
-    // M6: Home gripper
+    // M6: Home gripper (relative-only; does NOT set zero in firmware)
     if (!gripper) {
         sendError("Gripper not configured");
         return false;
@@ -533,10 +547,8 @@ bool GCodeParser::handleM6(const GCodeCommand& cmd) {
         delay(1);
     }
     
-    // Set current position as zero
-    gripper->setZero();
-    
-    debugPrintln(F("M6 done (gripper zeroed)"));
+    // Absolute zeroing is deprecated in relative-only mode. Do NOT call setZero().
+    debugPrintln(F("M6 done (relative home; zeroing disabled)"));
     
     return true;
 }
@@ -560,9 +572,7 @@ bool GCodeParser::handleM114(const GCodeCommand& cmd) {
     Serial.println(angles.theta3 * 180.0 / M_PI, 2);
     
     if (gripper) {
-        Serial.print(F("Gripper: "));
-        Serial.print(gripper->getCurrentPosition(), 2);
-        Serial.println(F("mm"));
+        Serial.println(F("Gripper: relative-only (position not tracked)"));
     }
     
     return true;
@@ -633,22 +643,17 @@ bool GCodeParser::handleM400(const GCodeCommand& cmd) {
 }
 
 bool GCodeParser::handleM3001(const GCodeCommand& cmd) {
-    // Report gripper position only
+    // Report gripper status — absolute position is deprecated in relative-only mode
     if (!gripper) {
         sendError("Gripper not configured");
         return false;
     }
-    
-    Serial.print(F("Gripper: "));
-    Serial.print(gripper->getCurrentPosition(), 2);
-    Serial.print(F("mm"));
-    
+
+    Serial.print(F("Gripper: position not tracked (relative-only mode)"));
     if (gripper->isMoving()) {
         Serial.print(F(" (moving)"));
     }
-    
     Serial.println();
-    
     return true;
 }
 
@@ -658,6 +663,6 @@ void GCodeParser::printHelp() {
     Serial.println(F("CMD: G4 P | G28 [F] | G90/G91"));
     Serial.println(F("CMD: M17 M18/M84 M112 M114 M119 M205 M400 HELP"));
     if (gripper) {
-        Serial.println(F("CMD: M3 [S<mm>] [F<mm/s>] M5 [F<mm/s>] M6 [F<mm/s>] M3001"));
+        Serial.println(F("CMD: M3 [S<mm>] [F<mm/s>] (close by mm) M5 [S<mm>] [F<mm/s>] (open by mm) M6 [F<mm/s>] (home relative) M3001 (status)"));
     }
 }
