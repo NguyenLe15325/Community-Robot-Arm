@@ -44,9 +44,9 @@
 // Set to true if motor rotates backwards
 // (Easier to flip this than rewire the motor)
 
-#define MOTOR1_INVERT           false       // Base rotation
-#define MOTOR2_INVERT           false       // Shoulder
-#define MOTOR3_INVERT           false       // Elbow
+#define MOTOR1_INVERT           true       // Base rotation
+#define MOTOR2_INVERT           true       // Shoulder
+#define MOTOR3_INVERT           true       // Elbow
 
 
 // ====================================================================

@@ -12,7 +12,7 @@ const float THETA1_MAX_RAD = 90.0 * (M_PI / 180.0);
 const float THETA1_MIN_RAD = -90.0 * (M_PI / 180.0);
 const float THETA2_MAX_RAD = 130.0 * (M_PI / 180.0);
 const float THETA2_MIN_RAD = 0.0 * (M_PI / 180.0);
-const float THETA3_MAX_RAD = 90.0 * (M_PI / 180.0);
+const float THETA3_MAX_RAD = 120.0 * (M_PI / 180.0);
 const float THETA3_MIN_RAD = -17.0 * (M_PI / 180.0);
 
 // --- Position Limits (in mm) ---

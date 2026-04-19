@@ -86,7 +86,7 @@ Joint limits used by kinematics:
 |---|---|
 | theta1 | [-90, 90] deg |
 | theta2 | [0, 130] deg |
-| theta3 | [-17, 90] deg |
+| theta3 | [-17, 120] deg |
 
 These limits define valid FK/IK solutions and workspace boundaries.
 
