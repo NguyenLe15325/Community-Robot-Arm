@@ -385,17 +385,11 @@ bool GCodeParser::handleG28(const GCodeCommand& cmd) {
     }
     
     if (gripper) {
-        while (gripper->isMoving()) {
-            gripper->update();
-            if (motor->serviceEmergencyStopInput()) {
-                motor->consumeEmergencyStopLatch();
-                gripper->stop();
-                gripper->disable();
-                Serial.println(F("ALARM:ESTOP"));
-                sendError("Homing aborted");
-                return false;
-            }
-            delay(1);
+        // After arm homing, also run gripper homing sequence (same as M6).
+        GCodeCommand gripperHomeCmd = {};
+        if (!handleM6(gripperHomeCmd)) {
+            sendError("Homing failed: gripper");
+            return false;
         }
     }
     
@@ -515,7 +509,10 @@ bool GCodeParser::handleM5(const GCodeCommand& cmd) {
 }
 
 bool GCodeParser::handleM6(const GCodeCommand& cmd) {
-    // M6: Home gripper (relative-only; does NOT set zero in firmware)
+    // M6: Home gripper by driving to close stop, then opening back.
+    // Sequence (relative-only):
+    //  1) close by GRIPPER_RELATIVE_MOVE_MAX
+    //  2) open by GRIPPER_MAX_POSITION
     if (!gripper) {
         sendError("Gripper not configured");
         return false;
@@ -530,10 +527,24 @@ bool GCodeParser::handleM6(const GCodeCommand& cmd) {
         Serial.print(F("M6 start F(mm/s)="));
         Serial.println(speedMmPerSec, 2);
     }
-    
-    gripper->home(speedStepsPerSec);
-    
-    // Wait for homing to complete
+
+    // Phase 1: close by configured max per-command relative travel.
+    gripper->moveRelative(GRIPPER_RELATIVE_MOVE_MAX, speedStepsPerSec);
+    while (gripper->isMoving()) {
+        gripper->update();
+        if (motor->serviceEmergencyStopInput()) {
+            motor->consumeEmergencyStopLatch();
+            gripper->stop();
+            gripper->disable();
+            Serial.println(F("ALARM:ESTOP"));
+            sendError("Gripper homing aborted");
+            return false;
+        }
+        delay(1);
+    }
+
+    // Phase 2: open by configured max gripper travel.
+    gripper->moveRelative(-GRIPPER_MAX_POSITION, speedStepsPerSec);
     while (gripper->isMoving()) {
         gripper->update();
         if (motor->serviceEmergencyStopInput()) {
@@ -548,7 +559,7 @@ bool GCodeParser::handleM6(const GCodeCommand& cmd) {
     }
     
     // Absolute zeroing is deprecated in relative-only mode. Do NOT call setZero().
-    debugPrintln(F("M6 done (relative home; zeroing disabled)"));
+    debugPrintln(F("M6 done (close then open sequence complete)"));
     
     return true;
 }

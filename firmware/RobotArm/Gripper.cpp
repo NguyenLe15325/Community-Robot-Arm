@@ -47,7 +47,7 @@ bool BYJ48Gripper::moveToPosition(float position, float speed) {
 
     // Calculate step delay from speed (clamped to safe stepper range)
     if (speed < 1.0) speed = 1.0;
-    if (speed > 500.0) speed = 500.0;
+    if (speed > 1700.0) speed = 1700.0;
     stepDelay = (unsigned long)(1000000.0 / speed);
 
     // Determine direction
@@ -81,7 +81,7 @@ bool BYJ48Gripper::moveRelative(float distance, float speed) {
 
     // Clamp speed to safe stepper range
     if (speed < 1.0) speed = 1.0;
-    if (speed > 500.0) speed = 500.0;
+    if (speed > 1700.0) speed = 1700.0;
     stepDelay = (unsigned long)(1000000.0 / speed);
 
     direction = (deltaSteps > 0) ? 1 : -1;
