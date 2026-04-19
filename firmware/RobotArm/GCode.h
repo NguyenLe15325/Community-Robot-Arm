@@ -22,6 +22,12 @@ struct GCodeCommand {
 
 class GCodeParser {
 public:
+    enum AsyncTask : uint8_t {
+        ASYNC_NONE = 0,
+        ASYNC_GRIPPER_HOME_CLOSE,
+        ASYNC_GRIPPER_HOME_OPEN
+    };
+
     /**
      * @brief Initialize the G-Code parser
      * @param controller Reference to NEMA17 controller
@@ -38,7 +44,7 @@ public:
     /**
      * @brief Check if parser is busy (moving or delaying)
      */
-    bool isBusy() const { return delaying; }
+    bool isBusy() const { return delaying || (asyncTask != ASYNC_NONE); }
     
     /**
      * @brief Set verbose mode for debugging
@@ -59,14 +65,21 @@ private:
     bool delaying;
     unsigned long delayStartTime;
     unsigned long delayDuration;
+
+    // Async gripper homing state for M6 / G28 gripper phase
+    AsyncTask asyncTask;
+    bool asyncFromG28;
+    float asyncGripperSpeedStepsPerSec;
     
     // Helper functions
     bool parseLine(const String& line, GCodeCommand& cmd);
     bool executeCommand(const GCodeCommand& cmd);
     void sendError(const String& error);
+    void sendError(const __FlashStringHelper* error);
     void sendOK();
     void debugPrintPrefix();
     void debugPrintln(const __FlashStringHelper* message);
+    void updateAsyncTask();
     
     // Command handlers
     bool handleG0G1(const GCodeCommand& cmd);  // Linear move

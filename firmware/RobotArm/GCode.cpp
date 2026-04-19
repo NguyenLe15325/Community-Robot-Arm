@@ -15,10 +15,15 @@ void GCodeParser::begin(NEMA17Controller* controller, BYJ48Gripper* gripperContr
     delaying = false;
     delayStartTime = 0;
     delayDuration = 0;
+    asyncTask = ASYNC_NONE;
+    asyncFromG28 = false;
+    asyncGripperSpeedStepsPerSec = 0.0f;
 }
 
 // --- Update Loop ---
 void GCodeParser::update() {
+    updateAsyncTask();
+
     // Check if we're in a non-blocking delay
     if (delaying) {
         if (motor->serviceEmergencyStopInput()) {
@@ -29,7 +34,7 @@ void GCodeParser::update() {
                 gripper->disable();
             }
             Serial.println(F("ALARM:ESTOP"));
-            sendError("Delay aborted");
+            sendError(F("Delay aborted"));
             return;
         }
 
@@ -38,7 +43,7 @@ void GCodeParser::update() {
             debugPrintln(F("G4 complete"));
             sendOK();
         }
-        return; // Don't process new commands while delaying
+        return; // Keep delay semantics: do not execute new commands while delaying.
     }
 
     while (Serial.available() > 0) {
@@ -49,20 +54,20 @@ void GCodeParser::update() {
                 GCodeCommand cmd;
                 if (parseLine(inputBuffer, cmd)) {
                     if (executeCommand(cmd)) {
-                        // Only send OK immediately if not delaying
-                        if (!delaying) {
+                        // For async commands (M6/G28 gripper phase), OK is emitted on completion.
+                        if (!isBusy()) {
                             sendOK();
                         }
                     }
                 } else {
-                    sendError("Parse error");
+                    sendError(F("Parse error"));
                 }
                 inputBuffer = "";
             }
         } else {
             inputBuffer += c;
             if (inputBuffer.length() > 128) { // Prevent buffer overflow
-                sendError("Line too long");
+                sendError(F("Line too long"));
                 inputBuffer = "";
             }
         }
@@ -71,6 +76,11 @@ void GCodeParser::update() {
 
 // --- Response Functions ---
 void GCodeParser::sendError(const String& error) {
+    Serial.print(F("Error: "));
+    Serial.println(error);
+}
+
+void GCodeParser::sendError(const __FlashStringHelper* error) {
     Serial.print(F("Error: "));
     Serial.println(error);
 }
@@ -89,6 +99,57 @@ void GCodeParser::debugPrintln(const __FlashStringHelper* message) {
     }
     debugPrintPrefix();
     Serial.println(message);
+}
+
+void GCodeParser::updateAsyncTask() {
+    if (asyncTask == ASYNC_NONE) {
+        return;
+    }
+
+    if (motor->serviceEmergencyStopInput()) {
+        motor->consumeEmergencyStopLatch();
+        asyncTask = ASYNC_NONE;
+        if (gripper) {
+            gripper->stop();
+            gripper->disable();
+        }
+        Serial.println(F("ALARM:ESTOP"));
+        sendError(F("Homing aborted"));
+        return;
+    }
+
+    if (!gripper) {
+        asyncTask = ASYNC_NONE;
+        sendError(F("Gripper not configured"));
+        return;
+    }
+
+    if (gripper->isMoving()) {
+        return;
+    }
+
+    switch (asyncTask) {
+        case ASYNC_GRIPPER_HOME_CLOSE:
+            gripper->moveRelative(-GRIPPER_MAX_POSITION, asyncGripperSpeedStepsPerSec);
+            asyncTask = ASYNC_GRIPPER_HOME_OPEN;
+            break;
+
+        case ASYNC_GRIPPER_HOME_OPEN:
+            asyncTask = ASYNC_NONE;
+            if (asyncFromG28) {
+                debugPrintln(F("G28 done"));
+            } else {
+                debugPrintln(F("M6 done (close then open sequence complete)"));
+            }
+            asyncFromG28 = false;
+            sendOK();
+            break;
+
+        case ASYNC_NONE:
+        default:
+            asyncTask = ASYNC_NONE;
+            break;
+    }
 }
 
 // --- Parser ---
@@ -203,6 +264,18 @@ bool GCodeParser::executeCommand(const GCodeCommand& cmd) {
         printHelp();
         return true;
     }
+
+    // During async homing phases, restrict commands to emergency and status queries.
+    if (asyncTask != ASYNC_NONE) {
+        bool allowed = false;
+        if (cmd.command == 'M') {
+            allowed = (cmd.number == 112 || cmd.number == 114 || cmd.number == 119 || cmd.number == 3001);
+        }
+        if (!allowed) {
+            sendError(F("Busy: homing in progress"));
+            return false;
+        }
+    }
     
     if (cmd.command == 'G') {
         switch (cmd.number) {
@@ -213,7 +286,7 @@ bool GCodeParser::executeCommand(const GCodeCommand& cmd) {
             case 90: return handleG90(cmd);
             case 91: return handleG91(cmd);
             default:
-                sendError("Unsupported G command: G" + String(cmd.number));
+                sendError(String(F("Unsupported G command: G")) + String(cmd.number));
                 return false;
         }
     } else if (cmd.command == 'M') {
@@ -231,12 +304,12 @@ bool GCodeParser::executeCommand(const GCodeCommand& cmd) {
             case 400: return handleM400(cmd);
             case 3001: return handleM3001(cmd);
             default:
-                sendError("Unsupported M command: M" + String(cmd.number));
+                sendError(String(F("Unsupported M command: M")) + String(cmd.number));
                 return false;
         }
     }
     
-    sendError("Unknown command");
+    sendError(F("Unknown command"));
     return false;
 }
 
@@ -250,7 +323,7 @@ bool GCodeParser::handleG0G1(const GCodeCommand& cmd) {
     // Require motors enabled for user move commands. Homing (G28) intentionally
     // enables motors on its own; user-facing moves should request `M17` first.
     if (motor && !motor->isEnabled()) {
-        sendError("Motors disabled; send M17 to enable motors before moves");
+        sendError(F("Motors disabled; send M17 to enable motors before moves"));
         return false;
     }
     
@@ -276,7 +349,7 @@ bool GCodeParser::handleG0G1(const GCodeCommand& cmd) {
 #endif
         
         if (!motor->moveToAngles(target, currentFeedrate)) {
-            sendError("Joint movement failed (limits exceeded?)");
+            sendError(F("Joint movement failed (limits exceeded?)"));
             return false;
         }
         
@@ -306,12 +379,12 @@ bool GCodeParser::handleG0G1(const GCodeCommand& cmd) {
         }
         
         if (!motor->moveToPosition(target, currentFeedrate)) {
-            sendError("Cartesian movement failed (unreachable or IK failed)");
+            sendError(F("Cartesian movement failed (unreachable or IK failed)"));
             return false;
         }
         
     } else {
-        sendError("No coordinates provided");
+        sendError(F("No coordinates provided"));
         return false;
     }
     
@@ -321,7 +394,7 @@ bool GCodeParser::handleG0G1(const GCodeCommand& cmd) {
 bool GCodeParser::handleG4(const GCodeCommand& cmd) {
     // Dwell - non-blocking wait for specified time
     if (!cmd.hasF) {
-        sendError("G4 requires P parameter (milliseconds)");
+        sendError(F("G4 requires P parameter (milliseconds)"));
         return false;
     }
     
@@ -346,6 +419,11 @@ bool GCodeParser::handleG4(const GCodeCommand& cmd) {
 }
 
 bool GCodeParser::handleG28(const GCodeCommand& cmd) {
+    if (asyncTask != ASYNC_NONE) {
+        sendError(F("Busy: homing in progress"));
+        return false;
+    }
+
     // Home the robot
     debugPrintln(F("G28 start"));
 
@@ -361,40 +439,26 @@ bool GCodeParser::handleG28(const GCodeCommand& cmd) {
                 gripper->disable();
             }
             Serial.println(F("ALARM:ESTOP"));
-            sendError("Homing aborted");
+            sendError(F("Homing aborted"));
         } else {
-            sendError("Homing failed");
+            sendError(F("Homing failed"));
         }
         return false;
     }
-    
-    // Wait for homing to complete
-    while (motor->isMoving()) {
-        motor->update();
-        if (motor->serviceEmergencyStopInput()) {
-            motor->consumeEmergencyStopLatch();
-            if (gripper) {
-                gripper->stop();
-                gripper->disable();
-            }
-            Serial.println(F("ALARM:ESTOP"));
-            sendError("Homing aborted");
-            return false;
-        }
-        delay(1);
-    }
-    
+
     if (gripper) {
-        // After arm homing, also run gripper homing sequence (same as M6).
-        GCodeCommand gripperHomeCmd = {};
-        if (!handleM6(gripperHomeCmd)) {
-            sendError("Homing failed: gripper");
+        asyncGripperSpeedStepsPerSec = gripper->mmPerSecToStepsPerSec(GRIPPER_HOMING_SPEED);
+        if (!gripper->moveRelative(GRIPPER_RELATIVE_MOVE_MAX, asyncGripperSpeedStepsPerSec)) {
+            sendError(F("Homing failed: gripper"));
             return false;
         }
+        asyncFromG28 = true;
+        asyncTask = ASYNC_GRIPPER_HOME_CLOSE;
+        return true;
     }
     
     debugPrintln(F("G28 done"));
-    
+
     return true;
 }
 
@@ -429,6 +493,8 @@ bool GCodeParser::handleM84(const GCodeCommand& cmd) {
 
 bool GCodeParser::handleM112(const GCodeCommand& cmd) {
     delaying = false;
+    asyncTask = ASYNC_NONE;
+    asyncFromG28 = false;
     motor->emergencyStop();
     motor->disable();
     if (gripper) {
@@ -444,7 +510,7 @@ bool GCodeParser::handleM112(const GCodeCommand& cmd) {
 bool GCodeParser::handleM3(const GCodeCommand& cmd) {
     // M3: Close gripper or move to position
     if (!gripper) {
-        sendError("Gripper not configured");
+        sendError(F("Gripper not configured"));
         return false;
     }
     
@@ -478,7 +544,7 @@ bool GCodeParser::handleM3(const GCodeCommand& cmd) {
 bool GCodeParser::handleM5(const GCodeCommand& cmd) {
     // M5: Open gripper
     if (!gripper) {
-        sendError("Gripper not configured");
+        sendError(F("Gripper not configured"));
         return false;
     }
     
@@ -509,12 +575,17 @@ bool GCodeParser::handleM5(const GCodeCommand& cmd) {
 }
 
 bool GCodeParser::handleM6(const GCodeCommand& cmd) {
+    if (asyncTask != ASYNC_NONE) {
+        sendError(F("Busy: homing in progress"));
+        return false;
+    }
+
     // M6: Home gripper by driving to close stop, then opening back.
     // Sequence (relative-only):
     //  1) close by GRIPPER_RELATIVE_MOVE_MAX
     //  2) open by GRIPPER_MAX_POSITION
     if (!gripper) {
-        sendError("Gripper not configured");
+        sendError(F("Gripper not configured"));
         return false;
     }
     
@@ -528,39 +599,15 @@ bool GCodeParser::handleM6(const GCodeCommand& cmd) {
         Serial.println(speedMmPerSec, 2);
     }
 
-    // Phase 1: close by configured max per-command relative travel.
-    gripper->moveRelative(GRIPPER_RELATIVE_MOVE_MAX, speedStepsPerSec);
-    while (gripper->isMoving()) {
-        gripper->update();
-        if (motor->serviceEmergencyStopInput()) {
-            motor->consumeEmergencyStopLatch();
-            gripper->stop();
-            gripper->disable();
-            Serial.println(F("ALARM:ESTOP"));
-            sendError("Gripper homing aborted");
-            return false;
-        }
-        delay(1);
+    if (!gripper->moveRelative(GRIPPER_RELATIVE_MOVE_MAX, speedStepsPerSec)) {
+        sendError(F("Gripper homing failed"));
+        return false;
     }
 
-    // Phase 2: open by configured max gripper travel.
-    gripper->moveRelative(-GRIPPER_MAX_POSITION, speedStepsPerSec);
-    while (gripper->isMoving()) {
-        gripper->update();
-        if (motor->serviceEmergencyStopInput()) {
-            motor->consumeEmergencyStopLatch();
-            gripper->stop();
-            gripper->disable();
-            Serial.println(F("ALARM:ESTOP"));
-            sendError("Gripper homing aborted");
-            return false;
-        }
-        delay(1);
-    }
-    
-    // Absolute zeroing is deprecated in relative-only mode. Do NOT call setZero().
-    debugPrintln(F("M6 done (close then open sequence complete)"));
-    
+    asyncFromG28 = false;
+    asyncGripperSpeedStepsPerSec = speedStepsPerSec;
+    asyncTask = ASYNC_GRIPPER_HOME_CLOSE;
+
     return true;
 }
 
@@ -642,7 +689,7 @@ bool GCodeParser::handleM400(const GCodeCommand& cmd) {
                 gripper->disable();
             }
             Serial.println(F("ALARM:ESTOP"));
-            sendError("Wait aborted");
+            sendError(F("Wait aborted"));
             return false;
         }
         delay(1);
@@ -656,7 +703,7 @@ bool GCodeParser::handleM400(const GCodeCommand& cmd) {
 bool GCodeParser::handleM3001(const GCodeCommand& cmd) {
     // Report gripper status — absolute position is deprecated in relative-only mode
     if (!gripper) {
-        sendError("Gripper not configured");
+        sendError(F("Gripper not configured"));
         return false;
     }
 
@@ -670,10 +717,10 @@ bool GCodeParser::handleM3001(const GCodeCommand& cmd) {
 
 // --- Help Function ---
 void GCodeParser::printHelp() {
-    Serial.println(F("CMD: G0/G1 X..Y..Z.. F | T1..T2..T3.. F"));
-    Serial.println(F("CMD: G4 P | G28 [F] | G90/G91"));
+    Serial.println(F("CMD: G0/G1 X Y Z F | T1 T2 T3 F"));
+    Serial.println(F("CMD: G4 P | G28[F] | G90/G91"));
     Serial.println(F("CMD: M17 M18/M84 M112 M114 M119 M205 M400 HELP"));
     if (gripper) {
-        Serial.println(F("CMD: M3 [S<mm>] [F<mm/s>] (close by mm) M5 [S<mm>] [F<mm/s>] (open by mm) M6 [F<mm/s>] (home relative) M3001 (status)"));
+        Serial.println(F("CMD: M3[S][F] close | M5[S][F] open | M6[F] home | M3001"));
     }
 }
