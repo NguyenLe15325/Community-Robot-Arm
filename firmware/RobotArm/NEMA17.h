@@ -62,19 +62,19 @@ public:
     void getMotionSmoothing(float& rampPortion, float& minSpeedScale) const;
     
     /**
-        * @brief Home robot
-        * - ENDSTOPS_INSTALLED=true: endstop seek + calibrated offset
-        * - ENDSTOPS_INSTALLED=false: software move to HOME_THETA1/2/3
-        * @param feedrate Homing speed in degrees/second (0 = use configured default)
+     * @brief Home robot
+     * - ENDSTOPS_INSTALLED=true: endstop seek + calibrated offset
+     * - ENDSTOPS_INSTALLED=false: software move to HOME_THETA1/2/3
+     * @param feedrate Homing speed in degrees/second (0 = use configured default)
      * @return true if homing successful
      */
-    bool home(float feedrate = 30.0);
+    bool home(float feedrate = 30.0f);
     
     /**
      * @brief Move to target joint angles with coordinated motion
      * @param target Target joint angles in radians
      * @param feedrate Movement speed (0 = use default maxSpeed)
-     * @return true if movement successful
+     * @return true if movement started successfully
      */
     bool moveToAngles(const JointAngles& target, float feedrate = 0);
     
@@ -87,12 +87,16 @@ public:
     bool moveToPosition(const CartesianPos& target, float feedrate = 0);
     
     /**
-     * @brief Get current joint angles
+     * @brief Get current joint angles (derived from actual motor step counts).
+     *
+     * Unlike the old implementation that cached the *target* angles,
+     * this always reflects the true motor position — even mid-motion
+     * or after an emergency stop.
      */
     JointAngles getCurrentAngles() const;
     
     /**
-     * @brief Get current Cartesian position
+     * @brief Get current Cartesian position (FK from actual step counts)
      */
     CartesianPos getCurrentPosition() const;
 
@@ -119,7 +123,7 @@ public:
 
     /**
      * @brief Poll serial input for emergency stop triggers and stop immediately.
-        * Triggers: '!' or Ctrl-X (0x18).
+     * Triggers: '!' or Ctrl-X (0x18).
      * @return true if emergency stop was triggered by serial input.
      */
     bool serviceEmergencyStopInput();
@@ -136,8 +140,7 @@ private:
     Kinematics3D kinematics;
     uint8_t sharedEnablePin;
     
-    // Current state
-    JointAngles currentAngles;
+    // Current state (steps are the source of truth for position)
     long currentSteps[3];
     bool moving;
     bool enabled;
@@ -159,12 +162,12 @@ private:
     bool emergencyStopLatched;
     
     // Helper functions
-    long anglesToSteps(int motorIndex, float angleRad);
-    float stepsToAngle(int motorIndex, long steps);
+    long anglesToSteps(int motorIndex, float angleRad) const;
+    float stepsToAngle(int motorIndex, long steps) const;
     void calculateCoordinatedMotion(const JointAngles& target, float feedrate);
     void stepMotor(int motorIndex);
     void stepMotorDirection(int motorIndex, int8_t direction);
-    bool withinLimits(const JointAngles& angles);
+    bool withinLimits(const JointAngles& angles) const;
 
     bool readEndstopRaw(int motorIndex) const;
     bool isEndstopTriggered(int motorIndex) const;

@@ -15,16 +15,15 @@ void GCodeParser::begin(NEMA17Controller* controller, BYJ48Gripper* gripperContr
     delaying = false;
     delayStartTime = 0;
     delayDuration = 0;
-    asyncTask = ASYNC_NONE;
-    asyncFromG28 = false;
-    asyncGripperSpeedStepsPerSec = 0.0f;
+
+    pendingOK = false;
 }
 
 // --- Update Loop ---
 void GCodeParser::update() {
-    updateAsyncTask();
-
-    // Check if we're in a non-blocking delay
+    // ---------------------------------------------------------------
+    // 1. Non-blocking delay (G4)
+    // ---------------------------------------------------------------
     if (delaying) {
         if (motor->serviceEmergencyStopInput()) {
             motor->consumeEmergencyStopLatch();
@@ -46,6 +45,38 @@ void GCodeParser::update() {
         return; // Keep delay semantics: do not execute new commands while delaying.
     }
 
+    // ---------------------------------------------------------------
+    // 2. Deferred "ok" — wait for motion/gripper to finish
+    // ---------------------------------------------------------------
+    if (pendingOK) {
+        bool motorBusy  = motor->isMoving();
+        bool gripperBusy = (gripper && gripper->isMoving());
+
+        if (!motorBusy && !gripperBusy) {
+            // Motion complete — send the deferred ok
+            sendOK();
+            pendingOK = false;
+        } else {
+            // Still moving — poll for real-time emergency stop ('!' / 0x18)
+            // while waiting.  Full text commands (including M112) are NOT
+            // processed until motion completes; use '!' for instant stop.
+            if (motor->serviceEmergencyStopInput()) {
+                motor->consumeEmergencyStopLatch();
+                if (gripper) {
+                    gripper->stop();
+                    gripper->disable();
+                }
+                Serial.println(F("ALARM:ESTOP"));
+                sendError(F("Motion aborted"));
+                pendingOK = false;
+            }
+        }
+        return; // Do not process new commands while waiting for motion.
+    }
+
+    // ---------------------------------------------------------------
+    // 3. Read and process ONE serial command
+    // ---------------------------------------------------------------
     while (Serial.available() > 0) {
         char c = Serial.read();
 
@@ -54,15 +85,28 @@ void GCodeParser::update() {
                 GCodeCommand cmd;
                 if (parseLine(inputBuffer, cmd)) {
                     if (executeCommand(cmd)) {
-                        // For async commands (M6/G28 gripper phase), OK is emitted on completion.
-                        if (!isBusy()) {
+                        // Determine whether to send ok now or defer it.
+                        if (delaying) {
+                            // G4 started — ok will be sent when delay completes.
+                        } else if (motor->isMoving() || (gripper && gripper->isMoving())) {
+                            // Motion started — defer ok until motion completes.
+                            pendingOK = true;
+                        } else {
+                            // Instant command (G90, M17, M114, etc.) — ok now.
                             sendOK();
                         }
                     }
+                    // If executeCommand returned false, the handler already
+                    // printed an error message.  No ok is sent.
                 } else {
                     sendError(F("Parse error"));
                 }
                 inputBuffer = "";
+                // Process ONE command per update() call.
+                // Remaining serial bytes stay in hardware buffer and are
+                // read on the next update().  This lets loop() run
+                // motor.update() / gripper.update() between commands.
+                return;
             }
         } else {
             inputBuffer += c;
@@ -75,10 +119,6 @@ void GCodeParser::update() {
 }
 
 // --- Response Functions ---
-void GCodeParser::sendError(const String& error) {
-    Serial.print(F("Error: "));
-    Serial.println(error);
-}
 
 void GCodeParser::sendError(const __FlashStringHelper* error) {
     Serial.print(F("Error: "));
@@ -99,57 +139,6 @@ void GCodeParser::debugPrintln(const __FlashStringHelper* message) {
     }
     debugPrintPrefix();
     Serial.println(message);
-}
-
-void GCodeParser::updateAsyncTask() {
-    if (asyncTask == ASYNC_NONE) {
-        return;
-    }
-
-    if (motor->serviceEmergencyStopInput()) {
-        motor->consumeEmergencyStopLatch();
-        asyncTask = ASYNC_NONE;
-        if (gripper) {
-            gripper->stop();
-            gripper->disable();
-        }
-        Serial.println(F("ALARM:ESTOP"));
-        sendError(F("Homing aborted"));
-        return;
-    }
-
-    if (!gripper) {
-        asyncTask = ASYNC_NONE;
-        sendError(F("Gripper not configured"));
-        return;
-    }
-
-    if (gripper->isMoving()) {
-        return;
-    }
-
-    switch (asyncTask) {
-        case ASYNC_GRIPPER_HOME_CLOSE:
-            gripper->moveRelative(-GRIPPER_MAX_POSITION, asyncGripperSpeedStepsPerSec);
-            asyncTask = ASYNC_GRIPPER_HOME_OPEN;
-            break;
-
-        case ASYNC_GRIPPER_HOME_OPEN:
-            asyncTask = ASYNC_NONE;
-            if (asyncFromG28) {
-                debugPrintln(F("G28 done"));
-            } else {
-                debugPrintln(F("M6 done (close then open sequence complete)"));
-            }
-            asyncFromG28 = false;
-            sendOK();
-            break;
-
-        case ASYNC_NONE:
-        default:
-            asyncTask = ASYNC_NONE;
-            break;
-    }
 }
 
 // --- Parser ---
@@ -264,18 +253,6 @@ bool GCodeParser::executeCommand(const GCodeCommand& cmd) {
         printHelp();
         return true;
     }
-
-    // During async homing phases, restrict commands to emergency and status queries.
-    if (asyncTask != ASYNC_NONE) {
-        bool allowed = false;
-        if (cmd.command == 'M') {
-            allowed = (cmd.number == 112 || cmd.number == 114 || cmd.number == 119 || cmd.number == 3001);
-        }
-        if (!allowed) {
-            sendError(F("Busy: homing in progress"));
-            return false;
-        }
-    }
     
     if (cmd.command == 'G') {
         switch (cmd.number) {
@@ -286,7 +263,8 @@ bool GCodeParser::executeCommand(const GCodeCommand& cmd) {
             case 90: return handleG90(cmd);
             case 91: return handleG91(cmd);
             default:
-                sendError(String(F("Unsupported G command: G")) + String(cmd.number));
+                Serial.print(F("Error: Unsupported G command: G"));
+                Serial.println(cmd.number);
                 return false;
         }
     } else if (cmd.command == 'M') {
@@ -304,7 +282,8 @@ bool GCodeParser::executeCommand(const GCodeCommand& cmd) {
             case 400: return handleM400(cmd);
             case 3001: return handleM3001(cmd);
             default:
-                sendError(String(F("Unsupported M command: M")) + String(cmd.number));
+                Serial.print(F("Error: Unsupported M command: M"));
+                Serial.println(cmd.number);
                 return false;
         }
     }
@@ -332,21 +311,9 @@ bool GCodeParser::handleG0G1(const GCodeCommand& cmd) {
         // Joint angle mode
         JointAngles target = motor->getCurrentAngles();
         
-        if (cmd.hasT1) target.theta1 = cmd.t1 * (M_PI / 180.0);
-        if (cmd.hasT2) target.theta2 = cmd.t2 * (M_PI / 180.0);
-        if (cmd.hasT3) target.theta3 = cmd.t3 * (M_PI / 180.0);
-        
-#if 0
-        if (verboseMode) {
-            debugPrintPrefix();
-            Serial.print(F("G0/G1 joint target [deg] T1="));
-            Serial.print(target.theta1 * 180.0 / M_PI);
-            Serial.print(F(" T2="));
-            Serial.print(target.theta2 * 180.0 / M_PI);
-            Serial.print(F(" T3="));
-            Serial.println(target.theta3 * 180.0 / M_PI);
-        }
-#endif
+        if (cmd.hasT1) target.theta1 = cmd.t1 * (M_PI / 180.0f);
+        if (cmd.hasT2) target.theta2 = cmd.t2 * (M_PI / 180.0f);
+        if (cmd.hasT3) target.theta3 = cmd.t3 * (M_PI / 180.0f);
         
         if (!motor->moveToAngles(target, currentFeedrate)) {
             sendError(F("Joint movement failed (limits exceeded?)"));
@@ -419,11 +386,6 @@ bool GCodeParser::handleG4(const GCodeCommand& cmd) {
 }
 
 bool GCodeParser::handleG28(const GCodeCommand& cmd) {
-    if (asyncTask != ASYNC_NONE) {
-        sendError(F("Busy: homing in progress"));
-        return false;
-    }
-
     // Home the robot
     debugPrintln(F("G28 start"));
 
@@ -446,19 +408,19 @@ bool GCodeParser::handleG28(const GCodeCommand& cmd) {
         return false;
     }
 
+    // Motor homing complete (blocking).
+    // Start async gripper homing if gripper is configured.
+    // The gripper's internal state machine runs in gripper.update(),
+    // and pendingOK will defer "ok" until gripper.isMoving() == false.
     if (gripper) {
-        asyncGripperSpeedStepsPerSec = gripper->mmPerSecToStepsPerSec(GRIPPER_HOMING_SPEED);
-        if (!gripper->moveRelative(GRIPPER_RELATIVE_MOVE_MAX, asyncGripperSpeedStepsPerSec)) {
-            sendError(F("Homing failed: gripper"));
-            return false;
-        }
-        asyncFromG28 = true;
-        asyncTask = ASYNC_GRIPPER_HOME_CLOSE;
+        float speedStepsPerSec = gripper->mmPerSecToStepsPerSec(GRIPPER_HOMING_SPEED);
+        gripper->startHome(speedStepsPerSec);
+        debugPrintln(F("G28 gripper homing"));
+        // pendingOK will be set by update() since gripper->isMoving() is true.
         return true;
     }
     
     debugPrintln(F("G28 done"));
-
     return true;
 }
 
@@ -493,8 +455,7 @@ bool GCodeParser::handleM84(const GCodeCommand& cmd) {
 
 bool GCodeParser::handleM112(const GCodeCommand& cmd) {
     delaying = false;
-    asyncTask = ASYNC_NONE;
-    asyncFromG28 = false;
+    pendingOK = false;
     motor->emergencyStop();
     motor->disable();
     if (gripper) {
@@ -575,17 +536,16 @@ bool GCodeParser::handleM5(const GCodeCommand& cmd) {
 }
 
 bool GCodeParser::handleM6(const GCodeCommand& cmd) {
-    if (asyncTask != ASYNC_NONE) {
-        sendError(F("Busy: homing in progress"));
+    // M6: Home gripper via 2-phase state machine (close then open).
+    // The gripper's internal homing state machine runs in gripper.update().
+    // pendingOK will defer "ok" until gripper.isMoving() == false.
+    if (!gripper) {
+        sendError(F("Gripper not configured"));
         return false;
     }
 
-    // M6: Home gripper by driving to close stop, then opening back.
-    // Sequence (relative-only):
-    //  1) close by GRIPPER_RELATIVE_MOVE_MAX
-    //  2) open by GRIPPER_MAX_POSITION
-    if (!gripper) {
-        sendError(F("Gripper not configured"));
+    if (gripper->isHoming()) {
+        sendError(F("Busy: gripper homing in progress"));
         return false;
     }
     
@@ -599,20 +559,12 @@ bool GCodeParser::handleM6(const GCodeCommand& cmd) {
         Serial.println(speedMmPerSec, 2);
     }
 
-    if (!gripper->moveRelative(GRIPPER_RELATIVE_MOVE_MAX, speedStepsPerSec)) {
-        sendError(F("Gripper homing failed"));
-        return false;
-    }
-
-    asyncFromG28 = false;
-    asyncGripperSpeedStepsPerSec = speedStepsPerSec;
-    asyncTask = ASYNC_GRIPPER_HOME_CLOSE;
-
+    gripper->startHome(speedStepsPerSec);
     return true;
 }
 
 bool GCodeParser::handleM114(const GCodeCommand& cmd) {
-    // Report current position
+    // Report current position (derived from actual step counts)
     CartesianPos pos = motor->getCurrentPosition();
     JointAngles angles = motor->getCurrentAngles();
     
@@ -623,11 +575,11 @@ bool GCodeParser::handleM114(const GCodeCommand& cmd) {
     Serial.print(F(" Z:"));
     Serial.print(pos.z, 2);
     Serial.print(F(" T1:"));
-    Serial.print(angles.theta1 * 180.0 / M_PI, 2);
+    Serial.print(angles.theta1 * 180.0f / M_PI, 2);
     Serial.print(F(" T2:"));
-    Serial.print(angles.theta2 * 180.0 / M_PI, 2);
+    Serial.print(angles.theta2 * 180.0f / M_PI, 2);
     Serial.print(F(" T3:"));
-    Serial.println(angles.theta3 * 180.0 / M_PI, 2);
+    Serial.println(angles.theta3 * 180.0f / M_PI, 2);
     
     if (gripper) {
         Serial.println(F("Gripper: relative-only (position not tracked)"));
@@ -677,11 +629,15 @@ bool GCodeParser::handleM205(const GCodeCommand& cmd) {
 }
 
 bool GCodeParser::handleM400(const GCodeCommand& cmd) {
-    // Wait for all moves to finish
+    // Wait for all moves to finish (motors AND gripper).
+    // With pendingOK, M400 is rarely needed — "ok" is already deferred
+    // until motion completes.  M400 is still useful for explicit sync
+    // within blocking contexts or backwards compatibility.
     debugPrintln(F("M400 wait start"));
     
-    while (motor->isMoving()) {
+    while (motor->isMoving() || (gripper && gripper->isMoving())) {
         motor->update();
+        if (gripper) gripper->update();
         if (motor->serviceEmergencyStopInput()) {
             motor->consumeEmergencyStopLatch();
             if (gripper) {

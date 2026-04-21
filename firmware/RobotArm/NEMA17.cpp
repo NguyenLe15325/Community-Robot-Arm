@@ -40,18 +40,14 @@ void NEMA17Controller::begin(const MotorConfig& motor1, const MotorConfig& motor
     // Set default motion parameters
     motion.maxSpeed = DEFAULT_MAX_SPEED;        // 90 deg/s
     
-    // Initialize to home position: theta1=0, theta2=90, theta3=0
-    currentAngles.theta1 = 0.0;
-    currentAngles.theta2 = 90.0 * (M_PI / 180.0);
-    currentAngles.theta3 = 0.0;
-    
-    // Initialize steps to match home angles
-    currentSteps[0] = anglesToSteps(0, currentAngles.theta1);  // 0 steps
-    currentSteps[1] = anglesToSteps(1, currentAngles.theta2);  // 450 steps (90° × 5)
-    currentSteps[2] = anglesToSteps(2, currentAngles.theta3);  // 0 steps
+    // Initialize step counts to match home position.
+    // Steps are the source of truth — angles are derived from them.
+    currentSteps[0] = anglesToSteps(0, HOME_THETA1 * (M_PI / 180.0f));
+    currentSteps[1] = anglesToSteps(1, HOME_THETA2 * (M_PI / 180.0f));
+    currentSteps[2] = anglesToSteps(2, HOME_THETA3 * (M_PI / 180.0f));
     
     for (int i = 0; i < 3; i++) {
-        targetSteps[i] = currentSteps[i];  // Target = current (no movement)
+        targetSteps[i] = currentSteps[i];
         lastStepTime[i] = 0;
         moveStartSteps[i] = currentSteps[i];
     }
@@ -109,9 +105,9 @@ bool NEMA17Controller::home(float feedrate) {
     #if !ENDSTOPS_INSTALLED
     // Fallback mode when no endstops are installed.
     JointAngles homeAngles;
-    homeAngles.theta1 = HOME_THETA1 * (M_PI / 180.0);
-    homeAngles.theta2 = HOME_THETA2 * (M_PI / 180.0);
-    homeAngles.theta3 = HOME_THETA3 * (M_PI / 180.0);
+    homeAngles.theta1 = HOME_THETA1 * (M_PI / 180.0f);
+    homeAngles.theta2 = HOME_THETA2 * (M_PI / 180.0f);
+    homeAngles.theta3 = HOME_THETA3 * (M_PI / 180.0f);
 
     const float softwareHomeFeedrate = (feedrate > 0.0f) ? feedrate : HOMING_FEEDRATE;
     return moveToAngles(homeAngles, softwareHomeFeedrate);
@@ -137,12 +133,12 @@ bool NEMA17Controller::home(float feedrate) {
     }
 
     // After mechanical homing and calibrated offsets, define this as logical home.
-    currentAngles.theta1 = HOME_THETA1 * (M_PI / 180.0);
-    currentAngles.theta2 = HOME_THETA2 * (M_PI / 180.0);
-    currentAngles.theta3 = HOME_THETA3 * (M_PI / 180.0);
+    // Steps are the source of truth.
+    currentSteps[0] = anglesToSteps(0, HOME_THETA1 * (M_PI / 180.0f));
+    currentSteps[1] = anglesToSteps(1, HOME_THETA2 * (M_PI / 180.0f));
+    currentSteps[2] = anglesToSteps(2, HOME_THETA3 * (M_PI / 180.0f));
 
     for (int i = 0; i < 3; i++) {
-        currentSteps[i] = anglesToSteps(i, (i == 0) ? currentAngles.theta1 : (i == 1) ? currentAngles.theta2 : currentAngles.theta3);
         targetSteps[i] = currentSteps[i];
         lastStepTime[i] = micros();
     }
@@ -172,11 +168,12 @@ bool NEMA17Controller::moveToAngles(const JointAngles& target, float feedrate) {
         moveStartSteps[i] = currentSteps[i];
     }
     
+    // Set moving BEFORE calculateCoordinatedMotion so the zero-step
+    // check in calculateCoordinatedMotion can override it to false.
+    moving = true;
+
     // Calculate coordinated motion profile
     calculateCoordinatedMotion(target, feedrate);
-    
-    currentAngles = target;
-    moving = true;
     
     return true;
 }
@@ -194,11 +191,17 @@ bool NEMA17Controller::moveToPosition(const CartesianPos& target, float feedrate
 
 // --- State Queries ---
 JointAngles NEMA17Controller::getCurrentAngles() const {
-    return currentAngles;
+    // Derive angles from actual step counts — always reflects true motor position,
+    // even mid-motion or after emergency stop.
+    JointAngles angles;
+    angles.theta1 = stepsToAngle(0, currentSteps[0]);
+    angles.theta2 = stepsToAngle(1, currentSteps[1]);
+    angles.theta3 = stepsToAngle(2, currentSteps[2]);
+    return angles;
 }
 
 CartesianPos NEMA17Controller::getCurrentPosition() const {
-    return kinematics.forwardKinematics(currentAngles);
+    return kinematics.forwardKinematics(getCurrentAngles());
 }
 
 bool NEMA17Controller::getEndstopTriggered(uint8_t axisIndex) const {
@@ -219,6 +222,8 @@ void NEMA17Controller::emergencyStop() {
     for (int i = 0; i < 3; i++) {
         targetSteps[i] = currentSteps[i];
     }
+    // currentSteps already reflects the true stopped position.
+    // getCurrentAngles() will return the correct values.
 }
 
 bool NEMA17Controller::serviceEmergencyStopInput() {
@@ -288,16 +293,16 @@ void NEMA17Controller::update() {
 }
 
 // --- Private Helper Functions ---
-long NEMA17Controller::anglesToSteps(int motorIndex, float angleRad) {
-    float angleDeg = angleRad * (180.0 / M_PI);
+long NEMA17Controller::anglesToSteps(int motorIndex, float angleRad) const {
+    float angleDeg = angleRad * (180.0f / M_PI);
     long steps = (long)(angleDeg * motors[motorIndex].stepsPerDegree);
     return motors[motorIndex].invertDirection ? -steps : steps;
 }
 
-float NEMA17Controller::stepsToAngle(int motorIndex, long steps) {
+float NEMA17Controller::stepsToAngle(int motorIndex, long steps) const {
     if (motors[motorIndex].invertDirection) steps = -steps;
     float angleDeg = (float)steps / motors[motorIndex].stepsPerDegree;
-    return angleDeg * (M_PI / 180.0);
+    return angleDeg * (M_PI / 180.0f);
 }
 
 void NEMA17Controller::calculateCoordinatedMotion(const JointAngles& target, float feedrate) {
@@ -317,7 +322,7 @@ void NEMA17Controller::calculateCoordinatedMotion(const JointAngles& target, flo
     leadAxisSteps = maxSteps;
     
     if (maxSteps == 0) {
-        moving = false;
+        moving = false; // Override — no movement needed
         return;
     }
     
@@ -334,7 +339,7 @@ void NEMA17Controller::calculateCoordinatedMotion(const JointAngles& target, flo
             float ratio = (float)stepDiffs[i] / (float)maxSteps;
             float motorSpeed = speed * ratio; // deg/s
             float stepsPerSec = motorSpeed * motors[i].stepsPerDegree;
-            stepDelays[i] = (unsigned long)(1000000.0 / stepsPerSec);
+            stepDelays[i] = (unsigned long)(1000000.0f / stepsPerSec);
             
             // Safety limit: minimum 50us between steps
             if (stepDelays[i] < 50) stepDelays[i] = 50;
@@ -623,7 +628,7 @@ bool NEMA17Controller::moveHomeOffsetSteps(float feedrate) {
     }
 }
 
-bool NEMA17Controller::withinLimits(const JointAngles& angles) {
+bool NEMA17Controller::withinLimits(const JointAngles& angles) const {
     if (angles.theta1 < THETA1_MIN_RAD || angles.theta1 > THETA1_MAX_RAD) return false;
     if (angles.theta2 < THETA2_MIN_RAD || angles.theta2 > THETA2_MAX_RAD) return false;
     if (angles.theta3 < THETA3_MIN_RAD || angles.theta3 > THETA3_MAX_RAD) return false;

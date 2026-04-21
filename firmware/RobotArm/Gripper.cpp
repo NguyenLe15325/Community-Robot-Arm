@@ -26,7 +26,6 @@ void BYJ48Gripper::begin(const GripperConfig& cfg) {
     
     // Initialize state
     currentSteps = 0;
-    currentPosition = 0;
     targetSteps = 0;
     moving = false;
     enabled = false;
@@ -34,9 +33,18 @@ void BYJ48Gripper::begin(const GripperConfig& cfg) {
     direction = 0;
     lastStepTime = 0;
     stepDelay = 2000; // Default: 500 steps/sec
+    homingPhase = HOMING_NONE;
+    homingSpeed = 0.0f;
     
     // Disable motor initially
     disable();
+}
+
+// --- Speed Clamping ---
+float BYJ48Gripper::clampSpeed(float speed) {
+    if (speed < 1.0f) return 1.0f;
+    if (speed > 1700.0f) return 1700.0f;
+    return speed;
 }
 
 // --- Movement Functions ---
@@ -45,10 +53,8 @@ bool BYJ48Gripper::moveToPosition(float position, float speed) {
     // Absolute position tracking is deprecated; callers should generally use relative moves.
     targetSteps = positionToSteps(position);
 
-    // Calculate step delay from speed (clamped to safe stepper range)
-    if (speed < 1.0) speed = 1.0;
-    if (speed > 1700.0) speed = 1700.0;
-    stepDelay = (unsigned long)(1000000.0 / speed);
+    speed = clampSpeed(speed);
+    stepDelay = (unsigned long)(1000000.0f / speed);
 
     // Determine direction
     if (targetSteps > currentSteps) {
@@ -76,13 +82,10 @@ bool BYJ48Gripper::moveRelative(float distance, float speed) {
         return true;
     }
 
-    // Do not rely on absolute position for clamping — perform a relative move by steps.
     targetSteps = currentSteps + deltaSteps;
 
-    // Clamp speed to safe stepper range
-    if (speed < 1.0) speed = 1.0;
-    if (speed > 1700.0) speed = 1700.0;
-    stepDelay = (unsigned long)(1000000.0 / speed);
+    speed = clampSpeed(speed);
+    stepDelay = (unsigned long)(1000000.0f / speed);
 
     direction = (deltaSteps > 0) ? 1 : -1;
 
@@ -92,19 +95,27 @@ bool BYJ48Gripper::moveRelative(float distance, float speed) {
 }
 
 void BYJ48Gripper::open(float speed) {
-    // Open by a relative amount (negative distance). Default distance controlled by GRIPPER_RELATIVE_MOVE_MM.
     moveRelative(-GRIPPER_RELATIVE_MOVE_MM, speed);
 }
 
 void BYJ48Gripper::close(float speed) {
-    // Close by a relative amount (positive distance). Default distance controlled by GRIPPER_RELATIVE_MOVE_MM.
     moveRelative(GRIPPER_RELATIVE_MOVE_MM, speed);
 }
 
+// --- Homing ---
+void BYJ48Gripper::startHome(float speedStepsPerSec) {
+    homingSpeed = speedStepsPerSec;
+    homingPhase = HOMING_CLOSE;
+    // Phase 1: close by max distance to reach mechanical stop
+    moveRelative(GRIPPER_RELATIVE_MOVE_MAX, speedStepsPerSec);
+}
+
+// --- Stop / Enable / Disable ---
 void BYJ48Gripper::stop() {
     moving = false;
     targetSteps = currentSteps;
     direction = 0;
+    homingPhase = HOMING_NONE;
 }
 
 void BYJ48Gripper::enable() {
@@ -121,11 +132,9 @@ void BYJ48Gripper::disable() {
     digitalWrite(config.in4Pin, LOW);
 }
 
-void BYJ48Gripper::home(float speed) {
-    // Home by performing a large relative open to reach the mechanical stop.
-    // Absolute zeroing is deprecated; this only attempts to open fully.
-    float distance = -(config.maxPosition + 20.0f); // mm (large open)
-    moveRelative(distance, speed);
+float BYJ48Gripper::getCurrentPosition() const {
+    // Derive position from step count on demand — avoids per-step float division.
+    return (float)currentSteps / config.stepsPerMM;
 }
 
 float BYJ48Gripper::mmPerSecToStepsPerSec(float speedMmPerSec) const {
@@ -144,11 +153,33 @@ float BYJ48Gripper::mmPerSecToStepsPerSec(float speedMmPerSec) const {
 
 // --- Update Loop ---
 void BYJ48Gripper::update() {
-    if (!moving || !enabled) return;
+    if (!enabled) return;
+
+    // --- Homing state machine ---
+    // When a motion phase finishes (moving becomes false), advance to the next phase.
+    if (homingPhase != HOMING_NONE && !moving) {
+        switch (homingPhase) {
+            case HOMING_CLOSE:
+                // Close phase done — start open phase
+                moveRelative(-GRIPPER_MAX_POSITION, homingSpeed);
+                homingPhase = HOMING_OPEN;
+                break;
+
+            case HOMING_OPEN:
+                // Open phase done — homing complete
+                homingPhase = HOMING_NONE;
+                break;
+
+            default:
+                homingPhase = HOMING_NONE;
+                break;
+        }
+    }
+
+    // --- Normal motion update ---
+    if (!moving) return;
     
     unsigned long now = micros();
-    
-    // Check if it's time for the next step
     if (now - lastStepTime >= stepDelay) {
         if (currentSteps != targetSteps) {
             doStep();
@@ -184,9 +215,6 @@ void BYJ48Gripper::doStep() {
     
     // Update motor pins
     setMotorPins(currentStep);
-    
-    // Update position
-    currentPosition = stepsToPosition(currentSteps);
 }
 
 void BYJ48Gripper::setMotorPins(uint8_t step) {
@@ -200,8 +228,4 @@ void BYJ48Gripper::setMotorPins(uint8_t step) {
 
 long BYJ48Gripper::positionToSteps(float position) {
     return (long)(position * config.stepsPerMM);
-}
-
-float BYJ48Gripper::stepsToPosition(long steps) {
-    return (float)steps / config.stepsPerMM;
 }

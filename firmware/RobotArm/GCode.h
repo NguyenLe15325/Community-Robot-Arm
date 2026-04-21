@@ -22,12 +22,6 @@ struct GCodeCommand {
 
 class GCodeParser {
 public:
-    enum AsyncTask : uint8_t {
-        ASYNC_NONE = 0,
-        ASYNC_GRIPPER_HOME_CLOSE,
-        ASYNC_GRIPPER_HOME_OPEN
-    };
-
     /**
      * @brief Initialize the G-Code parser
      * @param controller Reference to NEMA17 controller
@@ -36,15 +30,18 @@ public:
     void begin(NEMA17Controller* controller, BYJ48Gripper* gripperController = NULL);
     
     /**
-     * @brief Process incoming serial data
-     * Call this frequently in loop()
+     * @brief Process incoming serial data and manage deferred ok.
+     * Call this frequently in loop().
+     *
+     * Timing model:
+     * - Instant commands (G90, M17, M114...) send "ok" immediately.
+     * - Motion commands (G1, M3, M5, M6, G28) set pendingOK.
+     *   "ok" is deferred until motor AND gripper motion completes.
+     * - Dwell (G4) defers "ok" until the delay elapses.
+     * - While pendingOK is active, the firmware polls for '!' / Ctrl-X
+     *   emergency stop but does NOT process regular serial commands.
      */
     void update();
-    
-    /**
-     * @brief Check if parser is busy (moving or delaying)
-     */
-    bool isBusy() const { return delaying || (asyncTask != ASYNC_NONE); }
     
     /**
      * @brief Set verbose mode for debugging
@@ -61,25 +58,22 @@ private:
     bool absoluteMode;      // G90/G91
     float currentFeedrate;  // F value
     
-    // Non-blocking delay state
+    // Non-blocking delay state (G4)
     bool delaying;
     unsigned long delayStartTime;
     unsigned long delayDuration;
 
-    // Async gripper homing state for M6 / G28 gripper phase
-    AsyncTask asyncTask;
-    bool asyncFromG28;
-    float asyncGripperSpeedStepsPerSec;
+    // Deferred "ok" — set after motion-starting commands.
+    // Cleared (and ok sent) once motor + gripper are idle.
+    bool pendingOK;
     
     // Helper functions
     bool parseLine(const String& line, GCodeCommand& cmd);
     bool executeCommand(const GCodeCommand& cmd);
-    void sendError(const String& error);
     void sendError(const __FlashStringHelper* error);
     void sendOK();
     void debugPrintPrefix();
     void debugPrintln(const __FlashStringHelper* message);
-    void updateAsyncTask();
     
     // Command handlers
     bool handleG0G1(const GCodeCommand& cmd);  // Linear move

@@ -17,6 +17,15 @@ struct GripperConfig {
 class BYJ48Gripper {
 public:
     /**
+     * @brief Homing phase state machine.
+     */
+    enum HomingPhase : uint8_t {
+        HOMING_NONE = 0,
+        HOMING_CLOSE,   // Phase 1: close to find mechanical stop
+        HOMING_OPEN     // Phase 2: open to known position
+    };
+
+    /**
      * @brief Initialize the gripper
      * @param config Gripper configuration
      */
@@ -25,35 +34,46 @@ public:
     /**
      * @brief Move gripper to absolute position
      * @param position Target position in mm (0 = fully open, max = fully closed)
-     * @param speed Speed in steps/second (1-500, default 300)
+     * @param speed Speed in steps/second (1-1700, default 300)
      * @return true if movement started successfully
      */
-    bool moveToPosition(float position, float speed = 300.0);
+    bool moveToPosition(float position, float speed = 300.0f);
     
     /**
      * @brief Move gripper relative to current position
      * @param distance Distance to move in mm (positive = close, negative = open)
-     * @param speed Speed in steps/second (1-500, default 300)
+     * @param speed Speed in steps/second (1-1700, default 300)
      * @return true if movement started successfully
      */
-    bool moveRelative(float distance, float speed = 300.0);
+    bool moveRelative(float distance, float speed = 300.0f);
     
     /**
      * @brief Open gripper by a relative amount (firmware default)
-     * @param speed Speed in steps/second (1-500, default 300)
+     * @param speed Speed in steps/second (1-1700, default 300)
      * @note Default distance moved is GRIPPER_RELATIVE_MOVE_MM (mm)
      */
-    void open(float speed = 300.0);
+    void open(float speed = 300.0f);
     
     /**
      * @brief Close gripper by a relative amount (firmware default)
-     * @param speed Speed in steps/second (1-500, default 300)
+     * @param speed Speed in steps/second (1-1700, default 300)
      * @note Default distance moved is GRIPPER_RELATIVE_MOVE_MM (mm)
      */
-    void close(float speed = 300.0);
+    void close(float speed = 300.0f);
+
+    /**
+     * @brief Start the 2-phase homing sequence (close then open).
+     *
+     * The homing state machine runs inside update(). isMoving() returns
+     * true for the entire duration.  The caller should treat the command
+     * as asynchronous and wait for isMoving() == false.
+     *
+     * @param speedStepsPerSec Homing speed in motor steps/second.
+     */
+    void startHome(float speedStepsPerSec);
     
     /**
-     * @brief Stop gripper immediately
+     * @brief Stop gripper immediately and cancel any homing in progress
      */
     void stop();
     
@@ -68,16 +88,21 @@ public:
     void enable();
     
     /**
-     * @brief Get current position in mm
-     * @note Deprecated for relative-only firmware: absolute gripper position is not guaranteed
-     *       to be meaningful. This function is retained for API compatibility.
+     * @brief Get approximate current position in mm.
+     * @note Position is derived from step count; not guaranteed accurate
+     *       in relative-only mode.
      */
-    float getCurrentPosition() const { return currentPosition; }
+    float getCurrentPosition() const;
     
     /**
-     * @brief Check if gripper is currently moving
+     * @brief Check if gripper is currently moving (includes homing phases)
      */
-    bool isMoving() const { return moving; }
+    bool isMoving() const { return moving || (homingPhase != HOMING_NONE); }
+
+    /**
+     * @brief Check if gripper is in homing sequence
+     */
+    bool isHoming() const { return homingPhase != HOMING_NONE; }
     
     /**
      * @brief Update gripper state (call frequently in loop)
@@ -86,15 +111,9 @@ public:
     
     /**
      * @brief Set current position as zero reference
-     * @note Deprecated for relative-only firmware: avoid using this; M6 no longer zeroes position.
+     * @note Deprecated for relative-only firmware.
      */
-    void setZero() { currentSteps = 0; currentPosition = 0; }
-    
-    /**
-     * @brief Home the gripper (open fully then set as zero)
-     * @param speed Homing speed in steps/second
-     */
-    void home(float speed = 200.0);
+    void setZero() { currentSteps = 0; }
 
     /**
      * @brief Convert gripper linear speed from mm/s to motor steps/s.
@@ -108,7 +127,6 @@ private:
     
     // Current state
     long currentSteps;
-    float currentPosition;
     bool moving;
     bool enabled;
     
@@ -117,6 +135,10 @@ private:
     unsigned long stepDelay;
     unsigned long lastStepTime;
     int8_t direction;  // 1 = closing, -1 = opening
+
+    // Homing state machine
+    HomingPhase homingPhase;
+    float homingSpeed;
     
     // ULN2003 half-step sequence (8 steps per cycle)
     static const uint8_t STEP_SEQUENCE[8][4];
@@ -126,7 +148,11 @@ private:
     void doStep();
     void setMotorPins(uint8_t step);
     long positionToSteps(float position);
-    float stepsToPosition(long steps);
+
+    /**
+     * @brief Clamp speed to safe BYJ-48 stepper range.
+     */
+    static float clampSpeed(float speed);
 };
 
 #endif // GRIPPER_H
