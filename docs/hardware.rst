@@ -1,73 +1,73 @@
-Hardware Requirements & Wiring
-==============================
+Hardware & Electrical Specifications
+====================================
 
-Required Hardware
------------------
-To successfully assemble and operate the Community Robot Arm, the following hardware components are required:
+System Requirements
+-------------------
+The Community Robot Arm relies on standard, accessible components. To assemble the electronics package, you will need the following:
 
-* **NEMA17 Stepper Motors (x3)**: Required for the main joints. Pair these with either DRV8825 or A4988 stepper drivers.
-   * *Important:* You must manually calibrate the current limit for each driver using the onboard VR1 potentiometer. For detailed instructions, refer to these tutorials:
-      * `Tuning the DRV8825 <https://lastminuteengineers.com/drv8825-stepper-motor-driver-arduino-tutorial/>`_
-      * `Tuning the A4988 <https://lastminuteengineers.com/a4988-stepper-motor-driver-arduino-tutorial/>`_
-* **BYJ-48 Stepper Motor (x1)**: Utilized alongside its corresponding driver to operate the gripper mechanism.
-* **Microcontroller**: An Arduino Uno or Arduino Nano.
-* **Arduino GRBL Shield**: Use GRBLv3 for the Arduino Uno, or GRBLv4 for the Arduino Nano.
-   * *Hardware Notice:* The GRBLv4 shield designed for the Arduino Nano contains a known design flaw regarding microstepping pin selection. By default, the microstepping pins from the drivers (A4988 or DRV8825) are pulled LOW. They must be set HIGH to configure microstepping properly, but the GRBLv4 shield grounds the MS select trace instead of providing 5V. For a comprehensive workaround, please consult this guide: `Resolving CNC V4 Board Quirks <https://www.instructables.com/How-to-Use-the-CNC-V4-Board-despite-Its-quirks/>`_.
-* **Limit Switches (x3)**: Used for homing and endstop detection.
-* **Shared Enable Line**: Must be wired to all NEMA drivers.
-* **Power Supply**: Ensure your power supply is adequately rated to handle the simultaneous draw of all motors and drivers.
+* **Primary Actuators**: Three NEMA17 Stepper Motors, controlled by standard step/direction drivers (A4988 or DRV8825).
+* **End Effector Actuator**: One BYJ-48 Stepper Motor, driven by a ULN2003 control board, dedicated to the gripper mechanism.
+* **Microcontroller Unit (MCU)**: Arduino Uno or Arduino Nano.
+* **Expansion Shield**: CNC GRBL Shield (Version 3 for the Uno architecture; Version 4 for the Nano architecture).
+* **Limit Switches**: Three mechanical switches for establishing the kinematic home position.
+* **Power Supply**: A DC power supply capable of sustaining the peak current draw of all four motors simultaneously.
+* **Safety Hardware**: A shared hardware ENABLE line routed to all NEMA drivers to allow immediate de-energization.
 
-3D Printed Components
+Structural Components
 ---------------------
-The mechanical structure is based on the Florin Tobler robot arm design. The necessary STL files for 3D printing can be downloaded here: `Community Robot Arm CAD Files <https://grabcad.com/library/robot-arm-community-version-cad-3d-printed-robotic-arm-1>`_.
+The kinematic structure follows the open-source Florin Tobler architecture. The required STL geometry files for additive manufacturing are available via the `Community Robot Arm Repository <https://grabcad.com/library/robot-arm-community-version-cad-3d-printed-robotic-arm-1>`_.
 
-Wiring & Pinout Configuration
------------------------------
-Wiring connections must accurately follow the pinout configuration defined in ``firmware/RobotArm/Config_Pinout.h``. 
+Critical Hardware Advisories
+----------------------------
 
-+--------------------------+-----+
-| Function                 | Pin |
-+==========================+=====+
-| Theta1 STEP              | D6  |
-+--------------------------+-----+
-| Theta1 DIR               | D3  |
-+--------------------------+-----+
-| Theta2 STEP              | D5  |
-+--------------------------+-----+
-| Theta2 DIR               | D2  |
-+--------------------------+-----+
-| Theta3 STEP              | D7  |
-+--------------------------+-----+
-| Theta3 DIR               | D4  |
-+--------------------------+-----+
-| Shared EN (NEMA drivers) | D8  |
-+--------------------------+-----+
-| Theta1 endstop           | D10 |
-+--------------------------+-----+
-| Theta2 endstop           | D9  |
-+--------------------------+-----+
-| Theta3 endstop           | D11 |
-+--------------------------+-----+
-| Gripper IN1              | A0  |
-+--------------------------+-----+
-| Gripper IN2              | A1  |
-+--------------------------+-----+
-| Gripper IN3              | A2  |
-+--------------------------+-----+
-| Gripper IN4              | A3  |
-+--------------------------+-----+
+**1. Stepper Driver Current Calibration**
+Prior to connecting the NEMA17 motors, the reference voltage (VREF) on each A4988 or DRV8825 driver must be manually tuned using the onboard potentiometer. This limits the maximum current delivered to the motor coils. Failure to perform this calibration will result in severe thermal overload and permanent driver degradation.
 
-Please ensure that you connect each motor to its corresponding joint definitions. Additionally, connect the gripper and endstops accordingly. If your physical wiring differs from the defaults, be sure to update the configuration file before compiling the firmware.
+**2. GRBLv4 Shield Microstepping Defect**
+System integrators utilizing the Arduino Nano paired with the CNC V4 Shield must address a documented PCB manufacturing defect. The microstepping selection pins (MS1, MS2, MS3) are permanently grounded by the board's copper traces, restricting the system to full-step mode. To enable microstepping for smoother motion profiles, the grounded traces must be severed and the pins tied to a 5V logic source. A comprehensive guide to this hardware patch can be found `here <https://www.instructables.com/How-to-Use-the-CNC-V4-Board-despite-Its-quirks/>`_.
 
-Endstop Logic and Wiring
-------------------------
-* The endstop pins are internally configured using the ``INPUT_PULLUP`` state.
-* By default, the firmware assumes an active-low triggered logic (``ENDSTOP_ACTIVE_LOW true``).
-* For standard operation using the default settings, wire the endstops as follows:
-   * Connect one terminal of each switch to Ground (GND).
-   * Connect the other terminal to the respective endstop pin.
-* With this wiring configuration:
-   * An open switch registers as HIGH (Not Triggered).
-   * A pressed switch registers as LOW (Triggered).
+Wiring Architecture
+-------------------
+The firmware relies on a static pin mapping defined within ``firmware/RobotArm/Config_Pinout.h``. Ensure all physical connections strictly adhere to the following routing table:
 
-*Note:* If you are utilizing active-high hardware, you must modify the ``ENDSTOP_ACTIVE_LOW`` flag in ``Config_Robot.h`` to reflect this physical change.
++-----------------------------+--------------+
+| Component Function          | Arduino Pin  |
++=============================+==============+
+| Theta 1 (Base) Step         | D6           |
++-----------------------------+--------------+
+| Theta 1 (Base) Direction    | D3           |
++-----------------------------+--------------+
+| Theta 2 (Shoulder) Step     | D5           |
++-----------------------------+--------------+
+| Theta 2 (Shoulder) Direction| D2           |
++-----------------------------+--------------+
+| Theta 3 (Elbow) Step        | D7           |
++-----------------------------+--------------+
+| Theta 3 (Elbow) Direction   | D4           |
++-----------------------------+--------------+
+| Global Driver Enable        | D8           |
++-----------------------------+--------------+
+| Theta 1 Limit Switch        | D10          |
++-----------------------------+--------------+
+| Theta 2 Limit Switch        | D9           |
++-----------------------------+--------------+
+| Theta 3 Limit Switch        | D11          |
++-----------------------------+--------------+
+| Gripper IN1                 | A0           |
++-----------------------------+--------------+
+| Gripper IN2                 | A1           |
++-----------------------------+--------------+
+| Gripper IN3                 | A2           |
++-----------------------------+--------------+
+| Gripper IN4                 | A3           |
++-----------------------------+--------------+
+
+Endstop Integration
+-------------------
+The firmware utilizes the internal ``INPUT_PULLUP`` resistors on the microcontroller. By default, the system anticipates an active-low triggering mechanism (defined by ``ENDSTOP_ACTIVE_LOW true``). 
+
+To wire the endstops under the default configuration:
+1. Connect the Common (COM) terminal of the microswitch to Ground.
+2. Connect the Normally Open (NO) terminal to the designated signal pin.
+
+Under this topology, an idle switch registers a logic HIGH, while a physically depressed switch pulls the logic LOW, signaling a collision or home state. If your electrical architecture demands an active-high configuration, update the ``ENDSTOP_ACTIVE_LOW`` macro in the firmware configuration header before compilation.
