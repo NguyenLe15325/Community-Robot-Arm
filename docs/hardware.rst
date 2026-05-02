@@ -21,10 +21,12 @@ Critical Hardware Advisories
 ----------------------------
 
 **1. Stepper Driver Current Calibration**
-Prior to connecting the NEMA17 motors, the reference voltage (VREF) on each A4988 or DRV8825 driver must be manually tuned using the onboard potentiometer. This limits the maximum current delivered to the motor coils. Failure to perform this calibration will result in severe thermal overload and permanent driver degradation.
+Prior to connecting the NEMA17 motors, the reference voltage (VREF) on each A4988 or DRV8825 driver must be manually tuned using the onboard potentiometer. This limits the maximum current delivered to the motor coils. Failure to perform this calibration will result in severe thermal overload and permanent driver degradation. For detailed step-by-step calibration instructions, please refer to the following documentation:
+* `DRV8825 Stepper Motor Driver Tutorial <https://lastminuteengineers.com/drv8825-stepper-motor-driver-arduino-tutorial/>`_
+* `A4988 Stepper Motor Driver Tutorial <https://lastminuteengineers.com/a4988-stepper-motor-driver-arduino-tutorial/>`_
 
 **2. GRBLv4 Shield Microstepping Defect**
-System integrators utilizing the Arduino Nano paired with the CNC V4 Shield must address a documented PCB manufacturing defect. The microstepping selection pins (MS1, MS2, MS3) are permanently grounded by the board's copper traces, restricting the system to full-step mode. To enable microstepping for smoother motion profiles, the grounded traces must be severed and the pins tied to a 5V logic source. A comprehensive guide to this hardware patch can be found `here <https://www.instructables.com/How-to-Use-the-CNC-V4-Board-despite-Its-quirks/>`_.
+System integrators utilizing the Arduino Nano paired with the CNC V4 Shield must address a documented PCB manufacturing defect. The microstepping selection pins (MS1, MS2, MS3) are permanently grounded by the board's copper traces, restricting the system to full-step mode. To enable microstepping for smoother motion profiles, the grounded traces must be severed and the pins tied to a 5V logic source. For a comprehensive walkthrough of this remediation, refer to the guide: `How to Use the CNC V4 Board despite Its quirks <https://www.instructables.com/How-to-Use-the-CNC-V4-Board-despite-Its-quirks/>`_.
 
 Wiring Architecture
 -------------------
