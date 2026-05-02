@@ -2,6 +2,8 @@
 
 Minimal, practical firmware for a 3-DOF community robot arm (Florin Tobler design lineage), running on Arduino Nano/Uno.
 
+📖 **[Read the Full Documentation Here](https://nguyenle15325.github.io/Community-Robot-Arm/)**
+
 This project focuses on:
 - reliable joint and Cartesian motion
 - configurable endstop homing
