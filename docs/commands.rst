@@ -1,14 +1,16 @@
-Serial Protocol & Commands
-==========================
+Serial Protocol & Command Reference
+===================================
 
 Protocol Overview
 -----------------
-* **Baud rate**: ``115200`` (default)
-* **Line ending**: newline or carriage return
-* **Startup message**: ``READY``
-* **Successful command**: ``ok``
-* **Error format**: ``Error: <message>``
-* **Emergency alarm line**: ``ALARM:ESTOP``
+The firmware communicates via a robust, text-based serial protocol optimized for minimal overhead. 
+
+* **Baud Rate**: ``115200`` (default)
+* **Line Termination**: Standard newline or carriage return
+* **Boot Initialization**: Outputs ``READY`` upon successful startup
+* **Command Acknowledgment**: Returns ``ok`` after a successful execution
+* **Error Handling**: Outputs ``Error: <message>`` upon encountering invalid requests
+* **Hardware Alarms**: Broadcasts ``ALARM:ESTOP`` during emergency states
 
 Supported Commands
 ------------------
@@ -18,69 +20,69 @@ Motion and Modes
 +-------------------+---------------------------------------------------+
 | Command           | Description                                       |
 +===================+===================================================+
-| ``G0`` / ``G1``   | Move command (joint or Cartesian)                 |
+| ``G0`` / ``G1``   | Linear move command (Joint-space or Cartesian)    |
 +-------------------+---------------------------------------------------+
-| ``G4 P<ms>``      | Dwell (non-blocking state machine)                |
+| ``G4 P<ms>``      | Dwell command (utilizes non-blocking wait loops)  |
 +-------------------+---------------------------------------------------+
-| ``G28 [F<deg/s>]``| Home arm (NEMA homing speed)                      |
+| ``G28 [F<deg/s>]``| Initiate homing sequence at specified speed       |
 +-------------------+---------------------------------------------------+
-| ``G90``           | Absolute Cartesian mode                           |
+| ``G90``           | Set absolute positioning mode (Cartesian)         |
 +-------------------+---------------------------------------------------+
-| ``G91``           | Relative Cartesian mode                           |
+| ``G91``           | Set relative positioning mode (Cartesian)         |
 +-------------------+---------------------------------------------------+
 
-**G0/G1 parameter options:**
+**G0/G1 Parameter Architecture:**
 
-* Joint space: ``T1<deg>``, ``T2<deg>``, ``T3<deg>``
-* Cartesian: ``X``, ``Y``, ``Z`` (mm)
-* Feedrate: ``F<deg/s>`` (NEMA joint-space speed)
+* **Joint Space Mapping**: ``T1<deg>``, ``T2<deg>``, ``T3<deg>``
+* **Cartesian Mapping**: ``X``, ``Y``, ``Z`` (in millimeters)
+* **Feedrate Designation**: ``F<deg/s>`` (Modulates NEMA joint-space rotational speed)
 
-Motor Power and Status
-^^^^^^^^^^^^^^^^^^^^^^
+Motor Power and Diagnostics
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 +-------------------------------+----------------------------------------------------+
 | Command                       | Description                                        |
 +===============================+====================================================+
-| ``M17``                       | Enable arm drivers                                 |
+| ``M17``                       | Energize all arm stepper drivers                   |
 +-------------------------------+----------------------------------------------------+
-| ``M18`` / ``M84``             | Disable arm drivers                                |
+| ``M18`` / ``M84``             | De-energize all arm stepper drivers                |
 +-------------------------------+----------------------------------------------------+
-| ``M114``                      | Print Cartesian + joint state                      |
+| ``M114``                      | Query current Cartesian and joint-space state      |
 +-------------------------------+----------------------------------------------------+
-| ``M119``                      | Print endstop states                               |
+| ``M119``                      | Query the active logic states of all endstops      |
 +-------------------------------+----------------------------------------------------+
-| ``M205 [S<ramp>] [F<min>]``   | Query/set motion smoothing profile                 |
+| ``M205 [S<ramp>] [F<min>]``   | Query or modify the motion smoothing parameters    |
 +-------------------------------+----------------------------------------------------+
-| ``M400``                      | Wait until arm motion queue is done                |
+| ``M400``                      | Block serial processing until motion queue empties |
 +-------------------------------+----------------------------------------------------+
-| ``HELP``                      | Print compact command help                         |
+| ``HELP``                      | Display a compact command reference table          |
 +-------------------------------+----------------------------------------------------+
 
-Gripper
-^^^^^^^
+Gripper Control
+^^^^^^^^^^^^^^^
 +------------------------+-------------------------------------------------------------+
 | Command                | Description                                                 |
 +========================+=============================================================+
-| ``M3 [F<mm/s>]``       | Close gripper by default relative amount                    |
+| ``M3 [F<mm/s>]``       | Actuate gripper close (uses default relative distance)      |
 +------------------------+-------------------------------------------------------------+
-| ``M3 S<mm> [F<mm/s>]`` | Close gripper by S mm (relative, positive = close)          |
+| ``M3 S<mm> [F<mm/s>]`` | Actuate gripper close by ``S`` mm (relative, positive = close)|
 +------------------------+-------------------------------------------------------------+
-| ``M5 [F<mm/s>]``       | Open gripper by default relative amount                     |
+| ``M5 [F<mm/s>]``       | Actuate gripper open (uses default relative distance)       |
 +------------------------+-------------------------------------------------------------+
-| ``M5 S<mm> [F<mm/s>]`` | Open gripper by S mm (relative, positive = open)            |
+| ``M5 S<mm> [F<mm/s>]`` | Actuate gripper open by ``S`` mm (relative, positive = open)|
 +------------------------+-------------------------------------------------------------+
-| ``M6 [F<mm/s>]``       | Home gripper (relative-only; does not set zero)             |
+| ``M6 [F<mm/s>]``       | Home the gripper mechanism (performs relative limit test)   |
 +------------------------+-------------------------------------------------------------+
-| ``M3001``              | Print gripper status                                        |
+| ``M3001``              | Query the current status of the gripper mechanism           |
 +------------------------+-------------------------------------------------------------+
 
-Emergency
-^^^^^^^^^
+Emergency Halts
+^^^^^^^^^^^^^^^
 +-----------+-----------------------------------+
 | Command   | Description                       |
 +===========+===================================+
-| ``M112``  | Immediate emergency stop          |
+| ``M112``  | Immediate software emergency stop |
 +-----------+-----------------------------------+
-| ``!``     | Quick alias for ``M112``          |
+| ``!``     | Instantaneous alias for ``M112``  |
 +-----------+-----------------------------------+
 
-*Note:* Ctrl-X (``0x18``) is also treated as an emergency-stop trigger during blocking loops.
+*Implementation Note:* Transmitting the Ctrl-X (``0x18``) byte over serial is aggressively captured as an emergency-stop trigger, even during blocking execution loops.
