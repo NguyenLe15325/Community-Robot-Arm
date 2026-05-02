@@ -19,7 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Serial Protocol &amp; Commands" href="commands.html" />
+    <link rel="next" title="Serial Protocol &amp; Command Reference" href="commands.html" />
     <link rel="prev" title="Hardware Requirements &amp; Wiring" href="hardware.html" /> 
 </head>
 
@@ -42,19 +42,19 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Documentation Sections:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware Requirements &amp; Wiring</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Quick Setup Guide &amp; Calibration</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#flash-firmware-to-arduino">Flash Firmware to Arduino</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#test-motor-direction">Test Motor Direction</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#test-endstops">Test Endstops</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#home-robot">Home Robot</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#emergency-stop">Emergency Stop</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#calibration-guide">Calibration Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#flashing-the-firmware">Flashing the Firmware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#validating-motor-direction">Validating Motor Direction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing-the-endstops">Testing the Endstops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#executing-the-homing-sequence">Executing the Homing Sequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#emergency-stop-procedures">Emergency Stop Procedures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#calibration-guidelines">Calibration Guidelines</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="commands.html">Serial Protocol &amp; Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commands.html">Serial Protocol &amp; Command Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="kinematics.html">Kinematics &amp; Workspace</a></li>
 </ul>
 
@@ -84,81 +84,81 @@
              
   <section id="quick-setup-guide-calibration">
 <h1>Quick Setup Guide &amp; Calibration<a class="headerlink" href="#quick-setup-guide-calibration" title="Link to this heading"></a></h1>
-<section id="flash-firmware-to-arduino">
-<h2>Flash Firmware to Arduino<a class="headerlink" href="#flash-firmware-to-arduino" title="Link to this heading"></a></h2>
+<section id="flashing-the-firmware">
+<h2>Flashing the Firmware<a class="headerlink" href="#flashing-the-firmware" title="Link to this heading"></a></h2>
 <ol class="arabic simple">
-<li><p>Upload firmware to the Arduino board.</p></li>
-<li><p>Use the serial monitor to check if the firmware is uploaded successfully (Baud rate: <code class="docutils literal notranslate"><span class="pre">115200</span></code>).</p></li>
-<li><p>After upload, the serial monitor should show <code class="docutils literal notranslate"><span class="pre">READY</span></code>.</p></li>
+<li><p>Compile and upload the firmware to your Arduino board using your preferred IDE.</p></li>
+<li><p>Open the Serial Monitor and establish a connection using a baud rate of <code class="docutils literal notranslate"><span class="pre">115200</span></code>.</p></li>
+<li><p>Upon a successful boot, the Serial Monitor should output the system status as <code class="docutils literal notranslate"><span class="pre">READY</span></code>.</p></li>
 </ol>
 </section>
-<section id="test-motor-direction">
-<h2>Test Motor Direction<a class="headerlink" href="#test-motor-direction" title="Link to this heading"></a></h2>
+<section id="validating-motor-direction">
+<h2>Validating Motor Direction<a class="headerlink" href="#validating-motor-direction" title="Link to this heading"></a></h2>
 <ol class="arabic">
-<li><p>Manually place your robot at its home position.</p>
+<li><p>With the power off, manually articulate the robot arm into its home position.</p>
 <img alt="Home pose and xyz definition" class="align-center" src="_images/home.jpg" />
 </li>
-<li><p>Enable motors by sending <code class="docutils literal notranslate"><span class="pre">M17</span></code>. All NEMA17 motors should be energized and hold their position.</p></li>
-<li><p>At the home position, the expected state is <code class="docutils literal notranslate"><span class="pre">T1=0</span></code>, <code class="docutils literal notranslate"><span class="pre">T2=90</span></code>, <code class="docutils literal notranslate"><span class="pre">T3=0</span></code>.</p></li>
-<li><p>Try moving each theta by a small angle to check if the direction is correct. Positive rotation directions are defined as follows:</p>
+<li><p>Energize the motors by sending the <code class="docutils literal notranslate"><span class="pre">M17</span></code> command via the Serial Monitor. All three NEMA17 motors should engage and hold their current positions.</p></li>
+<li><p>At the home position, the system’s expected joint states are <code class="docutils literal notranslate"><span class="pre">T1=0</span></code>, <code class="docutils literal notranslate"><span class="pre">T2=90</span></code>, and <code class="docutils literal notranslate"><span class="pre">T3=0</span></code>.</p></li>
+<li><p>Carefully command a small movement for each joint to verify that the physical rotation aligns with the firmware’s defined positive direction:</p>
 <img alt="Side view with theta2/theta3 sign convention" class="align-center" src="_images/sideview.jpg" />
 </li>
-<li><p>Move individual joints using G1 commands (e.g., <code class="docutils literal notranslate"><span class="pre">G1</span> <span class="pre">T145</span> <span class="pre">T280</span> <span class="pre">T310</span></code> to move theta1 to 45 degree, theta2 to 80 degree, theta3 to 10 degree).</p>
-<p><em>Note:</em> Relative mode <code class="docutils literal notranslate"><span class="pre">G91</span></code> doesn’t apply to T1, T2, T3 commands (forward kinematics commands) - only absolute mode.</p>
+<li><p>You can test joint movements by utilizing standard G1 commands. For instance, executing <code class="docutils literal notranslate"><span class="pre">G1</span> <span class="pre">T145</span> <span class="pre">T280</span> <span class="pre">T310</span></code> will command Theta1 to 45°, Theta2 to 80°, and Theta3 to 10°.</p>
+<p><em>Note:</em> The relative positioning mode (<code class="docutils literal notranslate"><span class="pre">G91</span></code>) is strictly for Cartesian movements. Joint angle commands (T1, T2, T3) require absolute mode to function correctly.</p>
 </li>
-<li><p>Alternatively, you can run each theta move command separately:</p>
+<li><p>For isolated testing, you may command each axis individually:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">G1</span> <span class="pre">T145</span></code> (move theta1 to 45 degree)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">G1</span> <span class="pre">T280</span></code> (move theta2 to 80 degree)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">G1</span> <span class="pre">T310</span></code> (move theta3 to 10 degree)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">G1</span> <span class="pre">T145</span></code> (Moves Theta1 to 45°)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">G1</span> <span class="pre">T280</span></code> (Moves Theta2 to 80°)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">G1</span> <span class="pre">T310</span></code> (Moves Theta3 to 10°)</p></li>
 </ul>
 </li>
-<li><p>Toggle direction in the firmware (edit <code class="docutils literal notranslate"><span class="pre">Config_Robot.h</span></code> file) if needed, or hard wire and reflash:</p>
+<li><p>Should any axis rotate opposite to the intended direction:</p>
 <ul class="simple">
-<li><p>If a NEMA axis moves opposite to expected, flip <code class="docutils literal notranslate"><span class="pre">MOTORx_INVERT</span></code>.</p></li>
-<li><p>If gripper close/open is reversed, set <code class="docutils literal notranslate"><span class="pre">GRIPPER_INVERT_DIRECTION</span></code>.</p></li>
+<li><p>Invert the corresponding axis by toggling the <code class="docutils literal notranslate"><span class="pre">MOTORx_INVERT</span></code> parameter in <code class="docutils literal notranslate"><span class="pre">Config_Robot.h</span></code>, or physically reverse the motor wiring and reflash the firmware.</p></li>
+<li><p>If the gripper mechanism’s open/close logic is reversed, set <code class="docutils literal notranslate"><span class="pre">GRIPPER_INVERT_DIRECTION</span></code> to <code class="docutils literal notranslate"><span class="pre">true</span></code>.</p></li>
 </ul>
 </li>
 </ol>
 </section>
-<section id="test-endstops">
-<h2>Test Endstops<a class="headerlink" href="#test-endstops" title="Link to this heading"></a></h2>
-<p><strong>Critical:</strong> Make sure the endstop is wired correctly and working before homing.</p>
+<section id="testing-the-endstops">
+<h2>Testing the Endstops<a class="headerlink" href="#testing-the-endstops" title="Link to this heading"></a></h2>
+<p><strong>Critical Warning:</strong> It is imperative to verify that all endstops are wired correctly and triggering properly prior to executing a homing sequence. Failure to do so may result in mechanical damage.</p>
 <ol class="arabic simple">
-<li><p>Command to check endstop status: <code class="docutils literal notranslate"><span class="pre">M119</span></code></p></li>
-<li><p>Endstops should be LOW when not pressed and HIGH when pressed (or according to your logic config).</p></li>
-<li><p>For example, when you press the theta1 endstop, the output should be: <code class="docutils literal notranslate"><span class="pre">ENDSTOPS:</span> <span class="pre">1</span> <span class="pre">0</span> <span class="pre">0</span></code></p></li>
+<li><p>Send the <code class="docutils literal notranslate"><span class="pre">M119</span></code> command to poll the current status of all endstops.</p></li>
+<li><p>Based on the default active-low logic, the endstops should register as LOW when unpressed, and HIGH when triggered.</p></li>
+<li><p>Manually depress an endstop and send <code class="docutils literal notranslate"><span class="pre">M119</span></code> again. For instance, depressing the Theta1 endstop should yield the output: <code class="docutils literal notranslate"><span class="pre">ENDSTOPS:</span> <span class="pre">1</span> <span class="pre">0</span> <span class="pre">0</span></code>.</p></li>
 </ol>
 </section>
-<section id="home-robot">
-<h2>Home Robot<a class="headerlink" href="#home-robot" title="Link to this heading"></a></h2>
+<section id="executing-the-homing-sequence">
+<h2>Executing the Homing Sequence<a class="headerlink" href="#executing-the-homing-sequence" title="Link to this heading"></a></h2>
 <ol class="arabic simple">
-<li><p>Command to home robot: <code class="docutils literal notranslate"><span class="pre">G28</span></code></p></li>
-<li><p>After homing, the robot should be at its home position.</p></li>
-<li><p>Now the robot is ready to use.</p></li>
+<li><p>Initiate the homing procedure by sending the <code class="docutils literal notranslate"><span class="pre">G28</span></code> command.</p></li>
+<li><p>The robot will systematically seek its endstops. Upon completion, the arm will rest at the defined home position.</p></li>
+<li><p>The robot arm is now calibrated and ready for standard operation.</p></li>
 </ol>
 </section>
-<section id="emergency-stop">
-<h2>Emergency Stop<a class="headerlink" href="#emergency-stop" title="Link to this heading"></a></h2>
+<section id="emergency-stop-procedures">
+<h2>Emergency Stop Procedures<a class="headerlink" href="#emergency-stop-procedures" title="Link to this heading"></a></h2>
 <ol class="arabic simple">
-<li><p>Command to emergency stop: <code class="docutils literal notranslate"><span class="pre">!</span></code> or <code class="docutils literal notranslate"><span class="pre">M112</span></code></p></li>
-<li><p>After an emergency stop, the robot will stop immediately and disable all motors.</p></li>
-<li><p>Rehome the robot to use it again.</p></li>
-<li><p><em>Note:</em> Disconnecting power is the most reliable way to emergency stop the robot; simply disconnect the Arduino power supply.</p></li>
+<li><p>To trigger a software emergency stop, send the <code class="docutils literal notranslate"><span class="pre">!</span></code> character or the <code class="docutils literal notranslate"><span class="pre">M112</span></code> command.</p></li>
+<li><p>This immediately halts all ongoing motion and de-energizes the stepper motors.</p></li>
+<li><p>Once an emergency stop has been engaged, the robot must be re-homed before resuming normal operation.</p></li>
+<li><p><em>Safety Note:</em> While software stops are useful, the most reliable emergency stop method is mechanically disconnecting the main power supply to the Arduino.</p></li>
 </ol>
 </section>
-<section id="calibration-guide">
-<h2>Calibration Guide<a class="headerlink" href="#calibration-guide" title="Link to this heading"></a></h2>
-<p><strong>Verify steps per degree</strong>
-<code class="docutils literal notranslate"><span class="pre">STEPS_PER_DEGREE</span></code> should include full-step count, microstep setting, and mechanical ratio.</p>
+<section id="calibration-guidelines">
+<h2>Calibration Guidelines<a class="headerlink" href="#calibration-guidelines" title="Link to this heading"></a></h2>
+<p><strong>Verifying Steps Per Degree</strong>
+The <code class="docutils literal notranslate"><span class="pre">STEPS_PER_DEGREE</span></code> parameter dictates positional accuracy. This value must encapsulate the motor’s native step count, the driver’s microstepping configuration, and any mechanical gear reduction.</p>
 <p>Formula: <code class="docutils literal notranslate"><span class="pre">steps_per_degree</span> <span class="pre">=</span> <span class="pre">(motor_steps_per_rev</span> <span class="pre">*</span> <span class="pre">microstepping</span> <span class="pre">*</span> <span class="pre">gear_ratio)</span> <span class="pre">/</span> <span class="pre">360</span></code></p>
-<p><strong>Tune home offsets</strong>
-<code class="docutils literal notranslate"><span class="pre">HOME_OFFSET_STEPS_THETA*</span></code> are signed step moves applied after the endstop hit.</p>
-<p>Workflow:
-1. Run <code class="docutils literal notranslate"><span class="pre">G28</span></code>
-2. Read <code class="docutils literal notranslate"><span class="pre">M114</span></code>
-3. Compare measured pose against desired <code class="docutils literal notranslate"><span class="pre">HOME_THETA*</span></code>
-4. Adjust offsets in firmware and reflash.</p>
+<p><strong>Tuning Home Offsets</strong>
+The variables <code class="docutils literal notranslate"><span class="pre">HOME_OFFSET_STEPS_THETA*</span></code> represent signed step movements applied immediately after an endstop is triggered during homing.</p>
+<p>To precisely tune these offsets:
+1. Execute a homing sequence (<code class="docutils literal notranslate"><span class="pre">G28</span></code>).
+2. Query the current mechanical pose using <code class="docutils literal notranslate"><span class="pre">M114</span></code>.
+3. Compare the measured pose against your desired <code class="docutils literal notranslate"><span class="pre">HOME_THETA*</span></code> values.
+4. Adjust the offset parameters in the firmware configuration accordingly, and reflash the board.</p>
 </section>
 </section>
 
@@ -167,7 +167,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="hardware.html" class="btn btn-neutral float-left" title="Hardware Requirements &amp; Wiring" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="commands.html" class="btn btn-neutral float-right" title="Serial Protocol &amp; Commands" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="commands.html" class="btn btn-neutral float-right" title="Serial Protocol &amp; Command Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

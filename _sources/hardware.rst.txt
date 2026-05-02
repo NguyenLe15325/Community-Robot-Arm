@@ -3,25 +3,27 @@ Hardware Requirements & Wiring
 
 Required Hardware
 -----------------
-* **NEMA17 x3 motor** with 3 drivers (DRV8825 or A4988)
-   * *Note:* You have to set the current limit for the driver (DRV8825 or A4988) using the VR1 potentiometer. See documentation for details:
-      * `DRV8825 <https://lastminuteengineers.com/drv8825-stepper-motor-driver-arduino-tutorial/>`_
-      * `A4988 <https://lastminuteengineers.com/a4988-stepper-motor-driver-arduino-tutorial/>`_
-* **BYJ-48 stepper motor x1** with driver (for gripper)
-* **Arduino Uno or Nano x1**
-* **Arduino GRBL shield** (GRBLv3 for Arduino Uno or GRBLv4 for Arduino Nano)
-   * *Side note:* If you are using GRBLv4 with Arduino Nano, this board has a big design flaw in selecting microstep pins. Microsteps pins from the driver (A4988 or DRV8825) are set LOW by default and need to be set HIGH to enable microstep choosing, but the GRBLv4 shield MS select trace is GND instead of 5V. See a fix here: `How to Use the CNC V4 Board despite Its quirks <https://www.instructables.com/How-to-Use-the-CNC-V4-Board-despite-Its-quirks/>`_.
-* **Limit switch x3**
-* **Shared enable line** to all NEMA drivers
-* **Power supply** sized for all motors and drivers
+To successfully assemble and operate the Community Robot Arm, the following hardware components are required:
 
-3D Printed Parts
-----------------
-Florin Tobler Robot arm parts can be found here: `GrabCAD Library <https://grabcad.com/library/robot-arm-community-version-cad-3d-printed-robotic-arm-1>`_
+* **NEMA17 Stepper Motors (x3)**: Required for the main joints. Pair these with either DRV8825 or A4988 stepper drivers.
+   * *Important:* You must manually calibrate the current limit for each driver using the onboard VR1 potentiometer. For detailed instructions, refer to these tutorials:
+      * `Tuning the DRV8825 <https://lastminuteengineers.com/drv8825-stepper-motor-driver-arduino-tutorial/>`_
+      * `Tuning the A4988 <https://lastminuteengineers.com/a4988-stepper-motor-driver-arduino-tutorial/>`_
+* **BYJ-48 Stepper Motor (x1)**: Utilized alongside its corresponding driver to operate the gripper mechanism.
+* **Microcontroller**: An Arduino Uno or Arduino Nano.
+* **Arduino GRBL Shield**: Use GRBLv3 for the Arduino Uno, or GRBLv4 for the Arduino Nano.
+   * *Hardware Notice:* The GRBLv4 shield designed for the Arduino Nano contains a known design flaw regarding microstepping pin selection. By default, the microstepping pins from the drivers (A4988 or DRV8825) are pulled LOW. They must be set HIGH to configure microstepping properly, but the GRBLv4 shield grounds the MS select trace instead of providing 5V. For a comprehensive workaround, please consult this guide: `Resolving CNC V4 Board Quirks <https://www.instructables.com/How-to-Use-the-CNC-V4-Board-despite-Its-quirks/>`_.
+* **Limit Switches (x3)**: Used for homing and endstop detection.
+* **Shared Enable Line**: Must be wired to all NEMA drivers.
+* **Power Supply**: Ensure your power supply is adequately rated to handle the simultaneous draw of all motors and drivers.
 
-Wiring & Pinout
----------------
-Wiring should be done according to the pinout configuration defined in ``firmware/RobotArm/Config_Pinout.h``.
+3D Printed Components
+---------------------
+The mechanical structure is based on the Florin Tobler robot arm design. The necessary STL files for 3D printing can be downloaded here: `Community Robot Arm CAD Files <https://grabcad.com/library/robot-arm-community-version-cad-3d-printed-robotic-arm-1>`_.
+
+Wiring & Pinout Configuration
+-----------------------------
+Wiring connections must accurately follow the pinout configuration defined in ``firmware/RobotArm/Config_Pinout.h``. 
 
 +--------------------------+-----+
 | Function                 | Pin |
@@ -55,18 +57,17 @@ Wiring should be done according to the pinout configuration defined in ``firmwar
 | Gripper IN4              | A3  |
 +--------------------------+-----+
 
-* Connect to the right motor joint definition.
-* Connect gripper and endstop, and toggle enabled in config if needed (edit endstop connection config according to your wiring).
+Please ensure that you connect each motor to its corresponding joint definitions. Additionally, connect the gripper and endstops accordingly. If your physical wiring differs from the defaults, be sure to update the configuration file before compiling the firmware.
 
-Endstop Wiring and Logic
+Endstop Logic and Wiring
 ------------------------
-* Endstops are configured as ``INPUT_PULLUP``.
-* Default triggered logic is active-low (``ENDSTOP_ACTIVE_LOW true``).
-* Practical wiring for default behavior:
-   * One side of each switch to GND
-   * Other side to its endstop pin
-* With this wiring:
-   * Switch open -> pin HIGH -> not triggered
-   * Switch pressed -> pin LOW -> triggered
+* The endstop pins are internally configured using the ``INPUT_PULLUP`` state.
+* By default, the firmware assumes an active-low triggered logic (``ENDSTOP_ACTIVE_LOW true``).
+* For standard operation using the default settings, wire the endstops as follows:
+   * Connect one terminal of each switch to Ground (GND).
+   * Connect the other terminal to the respective endstop pin.
+* With this wiring configuration:
+   * An open switch registers as HIGH (Not Triggered).
+   * A pressed switch registers as LOW (Triggered).
 
-If your hardware is active-high, change ``ENDSTOP_ACTIVE_LOW`` in ``Config_Robot.h``.
+*Note:* If you are utilizing active-high hardware, you must modify the ``ENDSTOP_ACTIVE_LOW`` flag in ``Config_Robot.h`` to reflect this physical change.

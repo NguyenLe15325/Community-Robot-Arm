@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to Community-Robot-Arm’s documentation! &mdash; Community Robot Arm  documentation</title>
+  <title>Welcome to the Community Robot Arm Documentation &mdash; Community Robot Arm  documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
@@ -42,11 +42,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Documentation Sections:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware Requirements &amp; Wiring</a></li>
 <li class="toctree-l1"><a class="reference internal" href="setup.html">Quick Setup Guide &amp; Calibration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="commands.html">Serial Protocol &amp; Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commands.html">Serial Protocol &amp; Command Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="kinematics.html">Kinematics &amp; Workspace</a></li>
 </ul>
 
@@ -64,7 +64,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Welcome to Community-Robot-Arm’s documentation!</li>
+      <li class="breadcrumb-item active">Welcome to the Community Robot Arm Documentation</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -74,36 +74,37 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="welcome-to-community-robot-arm-s-documentation">
-<h1>Welcome to Community-Robot-Arm’s documentation!<a class="headerlink" href="#welcome-to-community-robot-arm-s-documentation" title="Link to this heading"></a></h1>
-<p>Minimal, practical firmware for a 3-DOF community robot arm (Florin Tobler design lineage), running on Arduino Nano/Uno.</p>
-<p>This project focuses on:</p>
+  <section id="welcome-to-the-community-robot-arm-documentation">
+<h1>Welcome to the Community Robot Arm Documentation<a class="headerlink" href="#welcome-to-the-community-robot-arm-documentation" title="Link to this heading"></a></h1>
+<p>This repository hosts a minimal, highly practical firmware engineered specifically for a 3-DOF community robot arm (derived from the Florin Tobler design lineage), optimized for operation on Arduino Nano and Arduino Uno microcontrollers.</p>
+<section id="project-objectives">
+<h2>Project Objectives<a class="headerlink" href="#project-objectives" title="Link to this heading"></a></h2>
 <ul class="simple">
-<li><p>Reliable joint and Cartesian motion</p></li>
-<li><p>Configurable endstop homing</p></li>
-<li><p>Simple serial G-code interface</p></li>
-<li><p>Low overhead for resource-limited boards</p></li>
+<li><p><strong>Reliability</strong>: Consistent and smooth execution of both joint-space and Cartesian motion.</p></li>
+<li><p><strong>Adaptability</strong>: Highly configurable endstop homing routines.</p></li>
+<li><p><strong>Accessibility</strong>: A straightforward, serial-based G-code interface for broad compatibility.</p></li>
+<li><p><strong>Efficiency</strong>: Extremely low computational overhead, tailored for resource-limited embedded hardware.</p></li>
 </ul>
 <div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<p class="caption" role="heading"><span class="caption-text">Documentation Sections:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware Requirements &amp; Wiring</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="hardware.html#required-hardware">Required Hardware</a></li>
-<li class="toctree-l2"><a class="reference internal" href="hardware.html#d-printed-parts">3D Printed Parts</a></li>
-<li class="toctree-l2"><a class="reference internal" href="hardware.html#wiring-pinout">Wiring &amp; Pinout</a></li>
-<li class="toctree-l2"><a class="reference internal" href="hardware.html#endstop-wiring-and-logic">Endstop Wiring and Logic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hardware.html#d-printed-components">3D Printed Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hardware.html#wiring-pinout-configuration">Wiring &amp; Pinout Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="hardware.html#endstop-logic-and-wiring">Endstop Logic and Wiring</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="setup.html">Quick Setup Guide &amp; Calibration</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="setup.html#flash-firmware-to-arduino">Flash Firmware to Arduino</a></li>
-<li class="toctree-l2"><a class="reference internal" href="setup.html#test-motor-direction">Test Motor Direction</a></li>
-<li class="toctree-l2"><a class="reference internal" href="setup.html#test-endstops">Test Endstops</a></li>
-<li class="toctree-l2"><a class="reference internal" href="setup.html#home-robot">Home Robot</a></li>
-<li class="toctree-l2"><a class="reference internal" href="setup.html#emergency-stop">Emergency Stop</a></li>
-<li class="toctree-l2"><a class="reference internal" href="setup.html#calibration-guide">Calibration Guide</a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#flashing-the-firmware">Flashing the Firmware</a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#validating-motor-direction">Validating Motor Direction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#testing-the-endstops">Testing the Endstops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#executing-the-homing-sequence">Executing the Homing Sequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#emergency-stop-procedures">Emergency Stop Procedures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="setup.html#calibration-guidelines">Calibration Guidelines</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="commands.html">Serial Protocol &amp; Commands</a><ul>
+<li class="toctree-l1"><a class="reference internal" href="commands.html">Serial Protocol &amp; Command Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="commands.html#protocol-overview">Protocol Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="commands.html#supported-commands">Supported Commands</a></li>
 </ul>
@@ -121,6 +122,7 @@
 </li>
 </ul>
 </div>
+</section>
 </section>
 
 

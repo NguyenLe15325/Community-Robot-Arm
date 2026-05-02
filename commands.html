@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Serial Protocol &amp; Commands &mdash; Community Robot Arm  documentation</title>
+  <title>Serial Protocol &amp; Command Reference &mdash; Community Robot Arm  documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
@@ -42,17 +42,17 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Documentation Sections:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware Requirements &amp; Wiring</a></li>
 <li class="toctree-l1"><a class="reference internal" href="setup.html">Quick Setup Guide &amp; Calibration</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Serial Protocol &amp; Commands</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Serial Protocol &amp; Command Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#protocol-overview">Protocol Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#supported-commands">Supported Commands</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#motion-and-modes">Motion and Modes</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#motor-power-and-status">Motor Power and Status</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#gripper">Gripper</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#emergency">Emergency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#motor-power-and-diagnostics">Motor Power and Diagnostics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#gripper-control">Gripper Control</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#emergency-halts">Emergency Halts</a></li>
 </ul>
 </li>
 </ul>
@@ -74,7 +74,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Serial Protocol &amp; Commands</li>
+      <li class="breadcrumb-item active">Serial Protocol &amp; Command Reference</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/commands.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -84,17 +84,18 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="serial-protocol-commands">
-<h1>Serial Protocol &amp; Commands<a class="headerlink" href="#serial-protocol-commands" title="Link to this heading"></a></h1>
+  <section id="serial-protocol-command-reference">
+<h1>Serial Protocol &amp; Command Reference<a class="headerlink" href="#serial-protocol-command-reference" title="Link to this heading"></a></h1>
 <section id="protocol-overview">
 <h2>Protocol Overview<a class="headerlink" href="#protocol-overview" title="Link to this heading"></a></h2>
+<p>The firmware communicates via a robust, text-based serial protocol optimized for minimal overhead.</p>
 <ul class="simple">
-<li><p><strong>Baud rate</strong>: <code class="docutils literal notranslate"><span class="pre">115200</span></code> (default)</p></li>
-<li><p><strong>Line ending</strong>: newline or carriage return</p></li>
-<li><p><strong>Startup message</strong>: <code class="docutils literal notranslate"><span class="pre">READY</span></code></p></li>
-<li><p><strong>Successful command</strong>: <code class="docutils literal notranslate"><span class="pre">ok</span></code></p></li>
-<li><p><strong>Error format</strong>: <code class="docutils literal notranslate"><span class="pre">Error:</span> <span class="pre">&lt;message&gt;</span></code></p></li>
-<li><p><strong>Emergency alarm line</strong>: <code class="docutils literal notranslate"><span class="pre">ALARM:ESTOP</span></code></p></li>
+<li><p><strong>Baud Rate</strong>: <code class="docutils literal notranslate"><span class="pre">115200</span></code> (default)</p></li>
+<li><p><strong>Line Termination</strong>: Standard newline or carriage return</p></li>
+<li><p><strong>Boot Initialization</strong>: Outputs <code class="docutils literal notranslate"><span class="pre">READY</span></code> upon successful startup</p></li>
+<li><p><strong>Command Acknowledgment</strong>: Returns <code class="docutils literal notranslate"><span class="pre">ok</span></code> after a successful execution</p></li>
+<li><p><strong>Error Handling</strong>: Outputs <code class="docutils literal notranslate"><span class="pre">Error:</span> <span class="pre">&lt;message&gt;</span></code> upon encountering invalid requests</p></li>
+<li><p><strong>Hardware Alarms</strong>: Broadcasts <code class="docutils literal notranslate"><span class="pre">ALARM:ESTOP</span></code> during emergency states</p></li>
 </ul>
 </section>
 <section id="supported-commands">
@@ -109,31 +110,31 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">G0</span></code> / <code class="docutils literal notranslate"><span class="pre">G1</span></code></p></td>
-<td><p>Move command (joint or Cartesian)</p></td>
+<td><p>Linear move command (Joint-space or Cartesian)</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">G4</span> <span class="pre">P&lt;ms&gt;</span></code></p></td>
-<td><p>Dwell (non-blocking state machine)</p></td>
+<td><p>Dwell command (utilizes non-blocking wait loops)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">G28</span> <span class="pre">[F&lt;deg/s&gt;]</span></code></p></td>
-<td><p>Home arm (NEMA homing speed)</p></td>
+<td><p>Initiate homing sequence at specified speed</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">G90</span></code></p></td>
-<td><p>Absolute Cartesian mode</p></td>
+<td><p>Set absolute positioning mode (Cartesian)</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">G91</span></code></p></td>
-<td><p>Relative Cartesian mode</p></td>
+<td><p>Set relative positioning mode (Cartesian)</p></td>
 </tr>
 </tbody>
 </table>
-<p><strong>G0/G1 parameter options:</strong></p>
+<p><strong>G0/G1 Parameter Architecture:</strong></p>
 <ul class="simple">
-<li><p>Joint space: <code class="docutils literal notranslate"><span class="pre">T1&lt;deg&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">T2&lt;deg&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">T3&lt;deg&gt;</span></code></p></li>
-<li><p>Cartesian: <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, <code class="docutils literal notranslate"><span class="pre">Z</span></code> (mm)</p></li>
-<li><p>Feedrate: <code class="docutils literal notranslate"><span class="pre">F&lt;deg/s&gt;</span></code> (NEMA joint-space speed)</p></li>
+<li><p><strong>Joint Space Mapping</strong>: <code class="docutils literal notranslate"><span class="pre">T1&lt;deg&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">T2&lt;deg&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">T3&lt;deg&gt;</span></code></p></li>
+<li><p><strong>Cartesian Mapping</strong>: <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, <code class="docutils literal notranslate"><span class="pre">Z</span></code> (in millimeters)</p></li>
+<li><p><strong>Feedrate Designation</strong>: <code class="docutils literal notranslate"><span class="pre">F&lt;deg/s&gt;</span></code> (Modulates NEMA joint-space rotational speed)</p></li>
 </ul>
 </section>
-<section id="motor-power-and-status">
-<h3>Motor Power and Status<a class="headerlink" href="#motor-power-and-status" title="Link to this heading"></a></h3>
+<section id="motor-power-and-diagnostics">
+<h3>Motor Power and Diagnostics<a class="headerlink" href="#motor-power-and-diagnostics" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Command</p></th>
@@ -142,61 +143,34 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">M17</span></code></p></td>
-<td><p>Enable arm drivers</p></td>
+<td><p>Energize all arm stepper drivers</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">M18</span></code> / <code class="docutils literal notranslate"><span class="pre">M84</span></code></p></td>
-<td><p>Disable arm drivers</p></td>
+<td><p>De-energize all arm stepper drivers</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">M114</span></code></p></td>
-<td><p>Print Cartesian + joint state</p></td>
+<td><p>Query current Cartesian and joint-space state</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">M119</span></code></p></td>
-<td><p>Print endstop states</p></td>
+<td><p>Query the active logic states of all endstops</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">M205</span> <span class="pre">[S&lt;ramp&gt;]</span> <span class="pre">[F&lt;min&gt;]</span></code></p></td>
-<td><p>Query/set motion smoothing profile</p></td>
+<td><p>Query or modify the motion smoothing parameters</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">M400</span></code></p></td>
-<td><p>Wait until arm motion queue is done</p></td>
+<td><p>Block serial processing until motion queue empties</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HELP</span></code></p></td>
-<td><p>Print compact command help</p></td>
+<td><p>Display a compact command reference table</p></td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="gripper">
-<h3>Gripper<a class="headerlink" href="#gripper" title="Link to this heading"></a></h3>
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Command</p></th>
-<th class="head"><p>Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">M3</span> <span class="pre">[F&lt;mm/s&gt;]</span></code></p></td>
-<td><p>Close gripper by default relative amount</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">M3</span> <span class="pre">S&lt;mm&gt;</span> <span class="pre">[F&lt;mm/s&gt;]</span></code></p></td>
-<td><p>Close gripper by S mm (relative, positive = close)</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">M5</span> <span class="pre">[F&lt;mm/s&gt;]</span></code></p></td>
-<td><p>Open gripper by default relative amount</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">M5</span> <span class="pre">S&lt;mm&gt;</span> <span class="pre">[F&lt;mm/s&gt;]</span></code></p></td>
-<td><p>Open gripper by S mm (relative, positive = open)</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">M6</span> <span class="pre">[F&lt;mm/s&gt;]</span></code></p></td>
-<td><p>Home gripper (relative-only; does not set zero)</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">M3001</span></code></p></td>
-<td><p>Print gripper status</p></td>
-</tr>
-</tbody>
-</table>
+<section id="gripper-control">
+<h3>Gripper Control<a class="headerlink" href="#gripper-control" title="Link to this heading"></a></h3>
 </section>
-<section id="emergency">
-<h3>Emergency<a class="headerlink" href="#emergency" title="Link to this heading"></a></h3>
+<section id="emergency-halts">
+<h3>Emergency Halts<a class="headerlink" href="#emergency-halts" title="Link to this heading"></a></h3>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Command</p></th>
@@ -205,14 +179,14 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">M112</span></code></p></td>
-<td><p>Immediate emergency stop</p></td>
+<td><p>Immediate software emergency stop</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">!</span></code></p></td>
-<td><p>Quick alias for <code class="docutils literal notranslate"><span class="pre">M112</span></code></p></td>
+<td><p>Instantaneous alias for <code class="docutils literal notranslate"><span class="pre">M112</span></code></p></td>
 </tr>
 </tbody>
 </table>
-<p><em>Note:</em> Ctrl-X (<code class="docutils literal notranslate"><span class="pre">0x18</span></code>) is also treated as an emergency-stop trigger during blocking loops.</p>
+<p><em>Implementation Note:</em> Transmitting the Ctrl-X (<code class="docutils literal notranslate"><span class="pre">0x18</span></code>) byte over serial is aggressively captured as an emergency-stop trigger, even during blocking execution loops.</p>
 </section>
 </section>
 </section>

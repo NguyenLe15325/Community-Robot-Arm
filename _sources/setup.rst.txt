@@ -1,76 +1,77 @@
 Quick Setup Guide & Calibration
 ===============================
 
-Flash Firmware to Arduino
--------------------------
-1. Upload firmware to the Arduino board.
-2. Use the serial monitor to check if the firmware is uploaded successfully (Baud rate: ``115200``).
-3. After upload, the serial monitor should show ``READY``.
+Flashing the Firmware
+---------------------
+1. Compile and upload the firmware to your Arduino board using your preferred IDE.
+2. Open the Serial Monitor and establish a connection using a baud rate of ``115200``.
+3. Upon a successful boot, the Serial Monitor should output the system status as ``READY``.
 
-Test Motor Direction
---------------------
-1. Manually place your robot at its home position.
+Validating Motor Direction
+--------------------------
+1. With the power off, manually articulate the robot arm into its home position.
 
    .. image:: ../assets/home.jpg
       :alt: Home pose and xyz definition
       :align: center
 
-2. Enable motors by sending ``M17``. All NEMA17 motors should be energized and hold their position.
-3. At the home position, the expected state is ``T1=0``, ``T2=90``, ``T3=0``.
-4. Try moving each theta by a small angle to check if the direction is correct. Positive rotation directions are defined as follows:
+2. Energize the motors by sending the ``M17`` command via the Serial Monitor. All three NEMA17 motors should engage and hold their current positions.
+3. At the home position, the system's expected joint states are ``T1=0``, ``T2=90``, and ``T3=0``.
+4. Carefully command a small movement for each joint to verify that the physical rotation aligns with the firmware's defined positive direction:
 
    .. image:: ../assets/sideview.jpg
       :alt: Side view with theta2/theta3 sign convention
       :align: center
 
-5. Move individual joints using G1 commands (e.g., ``G1 T145 T280 T310`` to move theta1 to 45 degree, theta2 to 80 degree, theta3 to 10 degree).
+5. You can test joint movements by utilizing standard G1 commands. For instance, executing ``G1 T145 T280 T310`` will command Theta1 to 45°, Theta2 to 80°, and Theta3 to 10°.
    
-   *Note:* Relative mode ``G91`` doesn't apply to T1, T2, T3 commands (forward kinematics commands) - only absolute mode.
+   *Note:* The relative positioning mode (``G91``) is strictly for Cartesian movements. Joint angle commands (T1, T2, T3) require absolute mode to function correctly.
 
-6. Alternatively, you can run each theta move command separately:
+6. For isolated testing, you may command each axis individually:
    
-   * ``G1 T145`` (move theta1 to 45 degree)
-   * ``G1 T280`` (move theta2 to 80 degree)
-   * ``G1 T310`` (move theta3 to 10 degree)
+   * ``G1 T145`` (Moves Theta1 to 45°)
+   * ``G1 T280`` (Moves Theta2 to 80°)
+   * ``G1 T310`` (Moves Theta3 to 10°)
 
-7. Toggle direction in the firmware (edit ``Config_Robot.h`` file) if needed, or hard wire and reflash:
+7. Should any axis rotate opposite to the intended direction:
    
-   * If a NEMA axis moves opposite to expected, flip ``MOTORx_INVERT``.
-   * If gripper close/open is reversed, set ``GRIPPER_INVERT_DIRECTION``.
+   * Invert the corresponding axis by toggling the ``MOTORx_INVERT`` parameter in ``Config_Robot.h``, or physically reverse the motor wiring and reflash the firmware.
+   * If the gripper mechanism's open/close logic is reversed, set ``GRIPPER_INVERT_DIRECTION`` to ``true``.
 
-Test Endstops
--------------
-**Critical:** Make sure the endstop is wired correctly and working before homing.
+Testing the Endstops
+--------------------
+**Critical Warning:** It is imperative to verify that all endstops are wired correctly and triggering properly prior to executing a homing sequence. Failure to do so may result in mechanical damage.
 
-1. Command to check endstop status: ``M119``
-2. Endstops should be LOW when not pressed and HIGH when pressed (or according to your logic config).
-3. For example, when you press the theta1 endstop, the output should be: ``ENDSTOPS: 1 0 0``
+1. Send the ``M119`` command to poll the current status of all endstops.
+2. Based on the default active-low logic, the endstops should register as LOW when unpressed, and HIGH when triggered.
+3. Manually depress an endstop and send ``M119`` again. For instance, depressing the Theta1 endstop should yield the output: ``ENDSTOPS: 1 0 0``.
 
-Home Robot
-----------
-1. Command to home robot: ``G28``
-2. After homing, the robot should be at its home position.
-3. Now the robot is ready to use.
+Executing the Homing Sequence
+-----------------------------
+1. Initiate the homing procedure by sending the ``G28`` command.
+2. The robot will systematically seek its endstops. Upon completion, the arm will rest at the defined home position.
+3. The robot arm is now calibrated and ready for standard operation.
 
-Emergency Stop
---------------
-1. Command to emergency stop: ``!`` or ``M112``
-2. After an emergency stop, the robot will stop immediately and disable all motors.
-3. Rehome the robot to use it again.
-4. *Note:* Disconnecting power is the most reliable way to emergency stop the robot; simply disconnect the Arduino power supply.
+Emergency Stop Procedures
+-------------------------
+1. To trigger a software emergency stop, send the ``!`` character or the ``M112`` command.
+2. This immediately halts all ongoing motion and de-energizes the stepper motors.
+3. Once an emergency stop has been engaged, the robot must be re-homed before resuming normal operation.
+4. *Safety Note:* While software stops are useful, the most reliable emergency stop method is mechanically disconnecting the main power supply to the Arduino.
 
-Calibration Guide
------------------
-**Verify steps per degree**
-``STEPS_PER_DEGREE`` should include full-step count, microstep setting, and mechanical ratio.
+Calibration Guidelines
+----------------------
+
+**Verifying Steps Per Degree**
+The ``STEPS_PER_DEGREE`` parameter dictates positional accuracy. This value must encapsulate the motor's native step count, the driver's microstepping configuration, and any mechanical gear reduction.
 
 Formula: ``steps_per_degree = (motor_steps_per_rev * microstepping * gear_ratio) / 360``
 
-**Tune home offsets**
-``HOME_OFFSET_STEPS_THETA*`` are signed step moves applied after the endstop hit.
+**Tuning Home Offsets**
+The variables ``HOME_OFFSET_STEPS_THETA*`` represent signed step movements applied immediately after an endstop is triggered during homing.
 
-Workflow:
-1. Run ``G28``
-2. Read ``M114``
-3. Compare measured pose against desired ``HOME_THETA*``
-4. Adjust offsets in firmware and reflash.
+To precisely tune these offsets:
+1. Execute a homing sequence (``G28``).
+2. Query the current mechanical pose using ``M114``.
+3. Compare the measured pose against your desired ``HOME_THETA*`` values.
+4. Adjust the offset parameters in the firmware configuration accordingly, and reflash the board.
