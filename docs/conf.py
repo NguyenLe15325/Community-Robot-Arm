@@ -6,6 +6,7 @@ author = 'Community'
 
 extensions = [
     'sphinx.ext.mathjax',
+    'sphinx.ext.githubpages',
 ]
 
 templates_path = ['_templates']
