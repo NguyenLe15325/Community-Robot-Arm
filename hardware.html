@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hardware Requirements &amp; Wiring &mdash; Community Robot Arm  documentation</title>
+  <title>Hardware &amp; Electrical Specifications &mdash; Community Robot Arm  documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
@@ -19,7 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Quick Setup Guide &amp; Calibration" href="setup.html" />
+    <link rel="next" title="Commissioning &amp; Calibration" href="setup.html" />
     <link rel="prev" title="Welcome to the Community Robot Arm Documentation" href="index.html" /> 
 </head>
 
@@ -44,14 +44,15 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Documentation Sections:</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Hardware Requirements &amp; Wiring</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#required-hardware">Required Hardware</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#d-printed-components">3D Printed Components</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#wiring-pinout-configuration">Wiring &amp; Pinout Configuration</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#endstop-logic-and-wiring">Endstop Logic and Wiring</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Hardware &amp; Electrical Specifications</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#system-requirements">System Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#structural-components">Structural Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#critical-hardware-advisories">Critical Hardware Advisories</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#wiring-architecture">Wiring Architecture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#endstop-integration">Endstop Integration</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="setup.html">Quick Setup Guide &amp; Calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setup.html">Commissioning &amp; Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="commands.html">Serial Protocol &amp; Command Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="kinematics.html">Kinematics &amp; Workspace</a></li>
 </ul>
@@ -70,7 +71,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Hardware Requirements &amp; Wiring</li>
+      <li class="breadcrumb-item active">Hardware &amp; Electrical Specifications</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/hardware.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -80,82 +81,70 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="hardware-requirements-wiring">
-<h1>Hardware Requirements &amp; Wiring<a class="headerlink" href="#hardware-requirements-wiring" title="Link to this heading"></a></h1>
-<section id="required-hardware">
-<h2>Required Hardware<a class="headerlink" href="#required-hardware" title="Link to this heading"></a></h2>
-<p>To successfully assemble and operate the Community Robot Arm, the following hardware components are required:</p>
+  <section id="hardware-electrical-specifications">
+<h1>Hardware &amp; Electrical Specifications<a class="headerlink" href="#hardware-electrical-specifications" title="Link to this heading"></a></h1>
+<section id="system-requirements">
+<h2>System Requirements<a class="headerlink" href="#system-requirements" title="Link to this heading"></a></h2>
+<p>The Community Robot Arm relies on standard, accessible components. To assemble the electronics package, you will need the following:</p>
 <ul class="simple">
-<li><dl class="simple">
-<dt><strong>NEMA17 Stepper Motors (x3)</strong>: Required for the main joints. Pair these with either DRV8825 or A4988 stepper drivers.</dt><dd><ul>
-<li><dl class="simple">
-<dt><em>Important:</em> You must manually calibrate the current limit for each driver using the onboard VR1 potentiometer. For detailed instructions, refer to these tutorials:</dt><dd><ul>
-<li><p><a class="reference external" href="https://lastminuteengineers.com/drv8825-stepper-motor-driver-arduino-tutorial/">Tuning the DRV8825</a></p></li>
-<li><p><a class="reference external" href="https://lastminuteengineers.com/a4988-stepper-motor-driver-arduino-tutorial/">Tuning the A4988</a></p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-</dd>
-</dl>
-</li>
-<li><p><strong>BYJ-48 Stepper Motor (x1)</strong>: Utilized alongside its corresponding driver to operate the gripper mechanism.</p></li>
-<li><p><strong>Microcontroller</strong>: An Arduino Uno or Arduino Nano.</p></li>
-<li><dl class="simple">
-<dt><strong>Arduino GRBL Shield</strong>: Use GRBLv3 for the Arduino Uno, or GRBLv4 for the Arduino Nano.</dt><dd><ul>
-<li><p><em>Hardware Notice:</em> The GRBLv4 shield designed for the Arduino Nano contains a known design flaw regarding microstepping pin selection. By default, the microstepping pins from the drivers (A4988 or DRV8825) are pulled LOW. They must be set HIGH to configure microstepping properly, but the GRBLv4 shield grounds the MS select trace instead of providing 5V. For a comprehensive workaround, please consult this guide: <a class="reference external" href="https://www.instructables.com/How-to-Use-the-CNC-V4-Board-despite-Its-quirks/">Resolving CNC V4 Board Quirks</a>.</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-<li><p><strong>Limit Switches (x3)</strong>: Used for homing and endstop detection.</p></li>
-<li><p><strong>Shared Enable Line</strong>: Must be wired to all NEMA drivers.</p></li>
-<li><p><strong>Power Supply</strong>: Ensure your power supply is adequately rated to handle the simultaneous draw of all motors and drivers.</p></li>
+<li><p><strong>Primary Actuators</strong>: Three NEMA17 Stepper Motors, controlled by standard step/direction drivers (A4988 or DRV8825).</p></li>
+<li><p><strong>End Effector Actuator</strong>: One BYJ-48 Stepper Motor, driven by a ULN2003 control board, dedicated to the gripper mechanism.</p></li>
+<li><p><strong>Microcontroller Unit (MCU)</strong>: Arduino Uno or Arduino Nano.</p></li>
+<li><p><strong>Expansion Shield</strong>: CNC GRBL Shield (Version 3 for the Uno architecture; Version 4 for the Nano architecture).</p></li>
+<li><p><strong>Limit Switches</strong>: Three mechanical switches for establishing the kinematic home position.</p></li>
+<li><p><strong>Power Supply</strong>: A DC power supply capable of sustaining the peak current draw of all four motors simultaneously.</p></li>
+<li><p><strong>Safety Hardware</strong>: A shared hardware ENABLE line routed to all NEMA drivers to allow immediate de-energization.</p></li>
 </ul>
 </section>
-<section id="d-printed-components">
-<h2>3D Printed Components<a class="headerlink" href="#d-printed-components" title="Link to this heading"></a></h2>
-<p>The mechanical structure is based on the Florin Tobler robot arm design. The necessary STL files for 3D printing can be downloaded here: <a class="reference external" href="https://grabcad.com/library/robot-arm-community-version-cad-3d-printed-robotic-arm-1">Community Robot Arm CAD Files</a>.</p>
+<section id="structural-components">
+<h2>Structural Components<a class="headerlink" href="#structural-components" title="Link to this heading"></a></h2>
+<p>The kinematic structure follows the open-source Florin Tobler architecture. The required STL geometry files for additive manufacturing are available via the <a class="reference external" href="https://grabcad.com/library/robot-arm-community-version-cad-3d-printed-robotic-arm-1">Community Robot Arm Repository</a>.</p>
 </section>
-<section id="wiring-pinout-configuration">
-<h2>Wiring &amp; Pinout Configuration<a class="headerlink" href="#wiring-pinout-configuration" title="Link to this heading"></a></h2>
-<p>Wiring connections must accurately follow the pinout configuration defined in <code class="docutils literal notranslate"><span class="pre">firmware/RobotArm/Config_Pinout.h</span></code>.</p>
+<section id="critical-hardware-advisories">
+<h2>Critical Hardware Advisories<a class="headerlink" href="#critical-hardware-advisories" title="Link to this heading"></a></h2>
+<p><strong>1. Stepper Driver Current Calibration</strong>
+Prior to connecting the NEMA17 motors, the reference voltage (VREF) on each A4988 or DRV8825 driver must be manually tuned using the onboard potentiometer. This limits the maximum current delivered to the motor coils. Failure to perform this calibration will result in severe thermal overload and permanent driver degradation.</p>
+<p><strong>2. GRBLv4 Shield Microstepping Defect</strong>
+System integrators utilizing the Arduino Nano paired with the CNC V4 Shield must address a documented PCB manufacturing defect. The microstepping selection pins (MS1, MS2, MS3) are permanently grounded by the board’s copper traces, restricting the system to full-step mode. To enable microstepping for smoother motion profiles, the grounded traces must be severed and the pins tied to a 5V logic source. A comprehensive guide to this hardware patch can be found <a class="reference external" href="https://www.instructables.com/How-to-Use-the-CNC-V4-Board-despite-Its-quirks/">here</a>.</p>
+</section>
+<section id="wiring-architecture">
+<h2>Wiring Architecture<a class="headerlink" href="#wiring-architecture" title="Link to this heading"></a></h2>
+<p>The firmware relies on a static pin mapping defined within <code class="docutils literal notranslate"><span class="pre">firmware/RobotArm/Config_Pinout.h</span></code>. Ensure all physical connections strictly adhere to the following routing table:</p>
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Function</p></th>
-<th class="head"><p>Pin</p></th>
+<tr class="row-odd"><th class="head"><p>Component Function</p></th>
+<th class="head"><p>Arduino Pin</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>Theta1 STEP</p></td>
+<tr class="row-even"><td><p>Theta 1 (Base) Step</p></td>
 <td><p>D6</p></td>
 </tr>
-<tr class="row-odd"><td><p>Theta1 DIR</p></td>
+<tr class="row-odd"><td><p>Theta 1 (Base) Direction</p></td>
 <td><p>D3</p></td>
 </tr>
-<tr class="row-even"><td><p>Theta2 STEP</p></td>
+<tr class="row-even"><td><p>Theta 2 (Shoulder) Step</p></td>
 <td><p>D5</p></td>
 </tr>
-<tr class="row-odd"><td><p>Theta2 DIR</p></td>
+<tr class="row-odd"><td><p>Theta 2 (Shoulder) Direction</p></td>
 <td><p>D2</p></td>
 </tr>
-<tr class="row-even"><td><p>Theta3 STEP</p></td>
+<tr class="row-even"><td><p>Theta 3 (Elbow) Step</p></td>
 <td><p>D7</p></td>
 </tr>
-<tr class="row-odd"><td><p>Theta3 DIR</p></td>
+<tr class="row-odd"><td><p>Theta 3 (Elbow) Direction</p></td>
 <td><p>D4</p></td>
 </tr>
-<tr class="row-even"><td><p>Shared EN (NEMA drivers)</p></td>
+<tr class="row-even"><td><p>Global Driver Enable</p></td>
 <td><p>D8</p></td>
 </tr>
-<tr class="row-odd"><td><p>Theta1 endstop</p></td>
+<tr class="row-odd"><td><p>Theta 1 Limit Switch</p></td>
 <td><p>D10</p></td>
 </tr>
-<tr class="row-even"><td><p>Theta2 endstop</p></td>
+<tr class="row-even"><td><p>Theta 2 Limit Switch</p></td>
 <td><p>D9</p></td>
 </tr>
-<tr class="row-odd"><td><p>Theta3 endstop</p></td>
+<tr class="row-odd"><td><p>Theta 3 Limit Switch</p></td>
 <td><p>D11</p></td>
 </tr>
 <tr class="row-even"><td><p>Gripper IN1</p></td>
@@ -172,31 +161,14 @@
 </tr>
 </tbody>
 </table>
-<p>Please ensure that you connect each motor to its corresponding joint definitions. Additionally, connect the gripper and endstops accordingly. If your physical wiring differs from the defaults, be sure to update the configuration file before compiling the firmware.</p>
 </section>
-<section id="endstop-logic-and-wiring">
-<h2>Endstop Logic and Wiring<a class="headerlink" href="#endstop-logic-and-wiring" title="Link to this heading"></a></h2>
-<ul class="simple">
-<li><p>The endstop pins are internally configured using the <code class="docutils literal notranslate"><span class="pre">INPUT_PULLUP</span></code> state.</p></li>
-<li><p>By default, the firmware assumes an active-low triggered logic (<code class="docutils literal notranslate"><span class="pre">ENDSTOP_ACTIVE_LOW</span> <span class="pre">true</span></code>).</p></li>
-<li><dl class="simple">
-<dt>For standard operation using the default settings, wire the endstops as follows:</dt><dd><ul>
-<li><p>Connect one terminal of each switch to Ground (GND).</p></li>
-<li><p>Connect the other terminal to the respective endstop pin.</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-<li><dl class="simple">
-<dt>With this wiring configuration:</dt><dd><ul>
-<li><p>An open switch registers as HIGH (Not Triggered).</p></li>
-<li><p>A pressed switch registers as LOW (Triggered).</p></li>
-</ul>
-</dd>
-</dl>
-</li>
-</ul>
-<p><em>Note:</em> If you are utilizing active-high hardware, you must modify the <code class="docutils literal notranslate"><span class="pre">ENDSTOP_ACTIVE_LOW</span></code> flag in <code class="docutils literal notranslate"><span class="pre">Config_Robot.h</span></code> to reflect this physical change.</p>
+<section id="endstop-integration">
+<h2>Endstop Integration<a class="headerlink" href="#endstop-integration" title="Link to this heading"></a></h2>
+<p>The firmware utilizes the internal <code class="docutils literal notranslate"><span class="pre">INPUT_PULLUP</span></code> resistors on the microcontroller. By default, the system anticipates an active-low triggering mechanism (defined by <code class="docutils literal notranslate"><span class="pre">ENDSTOP_ACTIVE_LOW</span> <span class="pre">true</span></code>).</p>
+<p>To wire the endstops under the default configuration:
+1. Connect the Common (COM) terminal of the microswitch to Ground.
+2. Connect the Normally Open (NO) terminal to the designated signal pin.</p>
+<p>Under this topology, an idle switch registers a logic HIGH, while a physically depressed switch pulls the logic LOW, signaling a collision or home state. If your electrical architecture demands an active-high configuration, update the <code class="docutils literal notranslate"><span class="pre">ENDSTOP_ACTIVE_LOW</span></code> macro in the firmware configuration header before compilation.</p>
 </section>
 </section>
 
@@ -205,7 +177,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="index.html" class="btn btn-neutral float-left" title="Welcome to the Community Robot Arm Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="setup.html" class="btn btn-neutral float-right" title="Quick Setup Guide &amp; Calibration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="setup.html" class="btn btn-neutral float-right" title="Commissioning &amp; Calibration" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
