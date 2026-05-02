@@ -1,0 +1,259 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kinematics &amp; Workspace &mdash; Community Robot Arm  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Serial Protocol &amp; Commands" href="commands.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Community Robot Arm
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware Requirements &amp; Wiring</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setup.html">Quick Setup Guide &amp; Calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="commands.html">Serial Protocol &amp; Commands</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Kinematics &amp; Workspace</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#notation-and-units">Notation and Units</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mechanical-model">Mechanical Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#home-pose-and-axis-frame">Home Pose and Axis Frame</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#positive-negative-rotation-directions">Positive/Negative Rotation Directions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#joint-limits">Joint Limits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#forward-kinematics">Forward Kinematics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#inverse-kinematics">Inverse Kinematics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#workspace-limits">Workspace Limits</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Community Robot Arm</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Kinematics &amp; Workspace</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/kinematics.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="kinematics-workspace">
+<h1>Kinematics &amp; Workspace<a class="headerlink" href="#kinematics-workspace" title="Link to this heading"></a></h1>
+<section id="notation-and-units">
+<h2>Notation and Units<a class="headerlink" href="#notation-and-units" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Symbol</p></th>
+<th class="head"><p>Meaning</p></th>
+<th class="head"><p>Unit</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>x, y, z</p></td>
+<td><p>Cartesian position</p></td>
+<td><p>mm</p></td>
+</tr>
+<tr class="row-odd"><td><p>L</p></td>
+<td><p>Effective link length</p></td>
+<td><p>mm</p></td>
+</tr>
+<tr class="row-even"><td><p>a</p></td>
+<td><p>Base offset</p></td>
+<td><p>mm</p></td>
+</tr>
+<tr class="row-odd"><td><p>theta1, theta2, theta3</p></td>
+<td><p>Joint angles</p></td>
+<td><p>deg (docs), rad (computation)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="mechanical-model">
+<h2>Mechanical Model<a class="headerlink" href="#mechanical-model" title="Link to this heading"></a></h2>
+<p>The physical arm uses shoulder/elbow 4-bar linkages. For kinematic computation, firmware uses an equivalent 3-DOF model:</p>
+<ul class="simple">
+<li><p>Base rotation joint: <code class="docutils literal notranslate"><span class="pre">theta1</span></code></p></li>
+<li><p>Shoulder-equivalent joint: <code class="docutils literal notranslate"><span class="pre">theta2</span></code></p></li>
+<li><p>Elbow-equivalent joint: <code class="docutils literal notranslate"><span class="pre">theta3</span></code></p></li>
+<li><p>Model constants: <code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">=</span> <span class="pre">140.0</span> <span class="pre">mm</span></code>, <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">54.0</span> <span class="pre">mm</span></code></p></li>
+</ul>
+</section>
+<section id="home-pose-and-axis-frame">
+<h2>Home Pose and Axis Frame<a class="headerlink" href="#home-pose-and-axis-frame" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>theta1</strong> = 0 deg (Robot facing middle/front)</p></li>
+<li><p><strong>theta2</strong> = 90 deg (Lower shank perpendicular to ground plane)</p></li>
+<li><p><strong>theta3</strong> = 0 deg (Upper shank parallel to ground plane)</p></li>
+</ul>
+<img alt="Home pose and xyz definition" class="align-center" src="_images/home.jpg" />
+</section>
+<section id="positive-negative-rotation-directions">
+<h2>Positive/Negative Rotation Directions<a class="headerlink" href="#positive-negative-rotation-directions" title="Link to this heading"></a></h2>
+<p><strong>Base axis (theta1)</strong>
+Base rotation sign follows the base/top-view convention.</p>
+<img alt="Base direction definition" class="align-center" src="_images/base.jpg" />
+<img alt="Top view reference" class="align-center" src="_images/topview.jpg" />
+<img alt="Positive z reference" class="align-center" src="_images/pos_z.jpg" />
+<img alt="Negative z reference" class="align-center" src="_images/neg_z.jpg" />
+<p><strong>Shoulder and elbow (theta2, theta3)</strong>
+In side view (xy plane), positive theta2 and theta3 follow the arrow direction:</p>
+<img alt="Side view with theta2/theta3 sign convention" class="align-center" src="_images/sideview.jpg" />
+</section>
+<section id="joint-limits">
+<h2>Joint Limits<a class="headerlink" href="#joint-limits" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Joint</p></th>
+<th class="head"><p>Range</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>theta1</p></td>
+<td><p>[-90, 90] deg</p></td>
+</tr>
+<tr class="row-odd"><td><p>theta2</p></td>
+<td><p>[0, 130] deg</p></td>
+</tr>
+<tr class="row-even"><td><p>theta3</p></td>
+<td><p>[-17, 120] deg</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="forward-kinematics">
+<h2>Forward Kinematics<a class="headerlink" href="#forward-kinematics" title="Link to this heading"></a></h2>
+<p>Let R denote the radial projection in the xz plane:</p>
+<div class="math notranslate nohighlight">
+\[R = L\cos\theta_2 + L\cos\theta_3 + a\]</div>
+<p>Then:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}x = R\cos\theta_1 \\
+y = L\sin\theta_2 - L\sin\theta_3 \\
+z = R\sin\theta_1\end{split}\]</div>
+</section>
+<section id="inverse-kinematics">
+<h2>Inverse Kinematics<a class="headerlink" href="#inverse-kinematics" title="Link to this heading"></a></h2>
+<ol class="arabic">
+<li><p><strong>Solve theta1 from x and z</strong></p>
+<div class="math notranslate nohighlight">
+\[R = \sqrt{x^2 + z^2}, \quad \theta_1 = \mathrm{atan2}(z, x)\]</div>
+</li>
+<li><p><strong>Reduce to side-plane problem (theta2, theta3)</strong></p>
+<p>Define:</p>
+<div class="math notranslate nohighlight">
+\[K_1 = \frac{R-a}{L}, \quad K_2 = \frac{y}{L}\]</div>
+<p>Reformulate as:</p>
+<div class="math notranslate nohighlight">
+\[A\cos\theta_3 + B\sin\theta_3 = C\]</div>
+<p>with <span class="math notranslate nohighlight">\(A = -2K_1, \quad B = 2K_2, \quad C = -(K_1^2 + K_2^2)\)</span></p>
+<p>Then compute:</p>
+<div class="math notranslate nohighlight">
+\[\alpha = \mathrm{atan2}(B, A), \quad \phi = \arccos\left(\frac{C}{\sqrt{A^2 + B^2}}\right)\]</div>
+<div class="math notranslate nohighlight">
+\[\theta_{3,1} = \alpha + \phi, \quad \theta_{3,2} = \alpha - \phi\]</div>
+</li>
+<li><p><strong>Recover theta2</strong></p>
+<p>For each candidate value of theta3:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\cos\theta_2 = K_1 - \cos\theta_3 \\
+\sin\theta_2 = K_2 + \sin\theta_3 \\
+\theta_2 = \mathrm{atan2}(\sin\theta_2, \cos\theta_2)\end{split}\]</div>
+</li>
+</ol>
+</section>
+<section id="workspace-limits">
+<h2>Workspace Limits<a class="headerlink" href="#workspace-limits" title="Link to this heading"></a></h2>
+<p><strong>Axis-aligned bounds:</strong>
+X: [0, 320], Z: [-320, 320]</p>
+<p><strong>Y bounds from extreme angles:</strong></p>
+<div class="math notranslate nohighlight">
+\[\begin{split}Y_{max} = L - L\sin(\theta_{3,min}) \\
+Y_{min} = L\sin(\theta_{2,min}) - L\sin(\theta_{3,max})\end{split}\]</div>
+<img alt="Minimum y concept" class="align-center" src="_images/ymin.jpg" />
+<p><strong>Radial reach bounds in xz projection:</strong></p>
+<div class="math notranslate nohighlight">
+\[\begin{split}R_{min} = L\cos(\theta_{2,max}) + L\cos(\theta_{3,min}) + a \\
+R_{max} = 320\end{split}\]</div>
+<img alt="Minimum reach concept" class="align-center" src="_images/minreach.jpg" />
+<img alt="Maximum reach concept" class="align-center" src="_images/maxreach.jpg" />
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="commands.html" class="btn btn-neutral float-left" title="Serial Protocol &amp; Commands" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Community.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
