@@ -1,70 +1,77 @@
-Commissioning & Calibration
-===========================
+Setup & Calibration
+===================
 
-Initial Deployment
-------------------
-1. Compile the firmware utilizing the Arduino IDE or ``arduino-cli`` and flash the compiled binary to the microcontroller.
-2. Initialize a serial connection to the board at a baud rate of ``115200``.
-3. Confirm system initialization by verifying the ``READY`` broadcast in the serial console.
+Initial Setup
+-------------
+1. Compile the firmware using the Arduino IDE or ``arduino-cli`` and upload it to your Arduino board.
+2. Open a serial connection to the board with a baud rate of ``115200``.
+3. Check that the board connects successfully by looking for the ``READY`` message in the serial monitor.
 
-Kinematic Direction Validation
-------------------------------
-Before commanding automated movements, the physical rotation of each axis must be verified against the firmware's kinematic model.
+Checking Motor Directions
+-------------------------
+Before running any automated movements, make sure the physical rotation of each motor matches the software's expectations.
 
-1. Disconnect motor power and manually manipulate the arm into the mechanical home orientation:
+1. Disconnect motor power and manually move the arm into the mechanical home position:
 
    .. image:: ../assets/home.jpg
       :alt: Mechanical Home Orientation
       :align: center
 
-2. Transmit the ``M17`` command to energize the drivers. The system will lock the joints in place.
-3. In this posture, the firmware assumes the internal joint angles are: **Theta 1 = 0°**, **Theta 2 = 90°**, and **Theta 3 = 0°**.
+2. Send the ``M17`` command to turn on the motors. The joints should lock in place.
+3. In this position, the software assumes the internal joint angles are: **Theta 1 = 0°**, **Theta 2 = 90°**, and **Theta 3 = 0°**.
 4. Reference the coordinate diagram below to understand the defined positive rotation vectors:
 
    .. image:: ../assets/sideview.jpg
       :alt: Kinematic Sign Convention
       :align: center
 
-5. Command isolated, low-displacement movements to each joint using absolute positioning commands (e.g., ``G1 T145`` to drive Theta 1 to 45°). Note that incremental positioning (``G91``) is invalid for direct joint-space (T-parameter) commands.
-6. If an actuator rotates counter to the mathematical model:
-   * **Software Resolution**: Invert the logic by toggling the respective ``MOTORx_INVERT`` boolean in ``Config_Robot.h`` and recompile.
-   * **Hardware Resolution**: De-energize the system and reverse the physical coil wiring for the affected stepper motor.
+   .. image:: ../assets/pos_z.jpg
+      :alt: Top View Sign Convention
+      :align: center
 
-Endstop Diagnostics
--------------------
-**Caution:** Executing a homing cycle with malfunctioning limit switches will result in mechanical collisions and potential hardware failure.
+5. Move each joint a little bit using absolute positioning commands (e.g., send ``G1 T145`` to move Theta 1 to 45°). Note that relative positioning (``G91``) does not work for direct joint commands (T-parameters).
+6. If a motor turns in the wrong direction:
 
-1. Issue the ``M119`` command to request an endstop telemetry report.
-2. Verify that all switches reflect an open state (``0`` for active-low configurations).
-3. Manually actuate each limit switch sequentially while polling ``M119`` to confirm the state transitions to triggered (``1``).
+   * **Software Fix**: Change the direction in code by toggling the ``MOTORx_INVERT`` setting in ``Config_Robot.h`` and upload the code again.
+   * **Hardware Fix**: Turn off the power and swap the coil wires for that stepper motor.
 
-Automated Homing Sequence
--------------------------
-1. Transmit the ``G28`` command to initiate the zeroing protocol.
-2. The controller will systematically drive all axes toward their respective limit switches.
-3. Upon switch contact, the system applies predefined offset steps and sets the internal kinematic state to the configured home angles.
-
-Emergency Intervention
+Testing Limit Switches
 ----------------------
-In the event of anomalous behavior or impending mechanical collision:
-* Transmit the ``M112`` command (or the ``!`` alias) to trigger an immediate software halt. This routine bypasses the motion planner and immediately drops the driver ENABLE line.
-* Following a software halt, the kinematic state is considered invalid; a complete ``G28`` homing cycle is required before operations can resume.
-* **Hardware Override**: Physically severing the primary DC power supply remains the most robust method for emergency intervention.
+**Caution:** Homing the arm with broken limit switches will cause the arm to crash and potentially break hardware.
 
-System Calibration
-------------------
+1. Send the ``M119`` command to check the limit switch status.
+2. Make sure all switches show as open (``0`` for default setups).
+3. Manually press each limit switch one by one while sending ``M119`` again to confirm they change to triggered (``1``).
 
-**Resolution Tuning (Steps Per Degree)**
-The ``STEPS_PER_DEGREE`` constant defines the relationship between motor pulses and physical displacement. It must be precisely calculated based on the motor's step angle, the driver's microstepping multiplier, and the mechanical gear reduction.
+Auto Homing
+-----------
+1. Send the ``G28`` command to start homing.
+2. The controller will move all joints toward their limit switches.
+3. When a switch is hit, the system moves back by a set number of steps and sets the internal angles to the home position.
+
+Emergency Stop
+--------------
+If something goes wrong or the arm is about to crash:
+
+* Send the ``M112`` command (or just ``!``) to trigger an immediate software stop. This immediately cuts the ENABLE line to the motors.
+* After a software stop, you must run a full ``G28`` homing cycle before moving the arm again.
+* **Hardware Override**: Physically unplugging the main DC power supply is always the safest way to stop the robot.
+
+Calibration
+-----------
+
+**Steps Per Degree**
+The ``STEPS_PER_DEGREE`` setting tells the software how many motor steps equal one degree of movement. It needs to be calculated based on your motor, microstepping, and gear ratio.
 
 .. math::
    \text{Steps}/\text{Degree} = \frac{\text{Motor Steps Per Revolution} \times \text{Microstepping Factor} \times \text{Gear Ratio}}{360}
 
 **Home Offset Calibration**
-The parameters denoted as ``HOME_OFFSET_STEPS_THETA*`` govern the signed step displacement applied after the limit switch is triggered.
+The ``HOME_OFFSET_STEPS_THETA*`` settings control how many steps the arm moves away from the limit switch after hitting it.
 
-To calibrate the mechanical origin:
-1. Execute a full homing cycle (``G28``).
-2. Query the current logical position via ``M114``.
+To calibrate the home position:
+
+1. Run a full homing cycle (``G28``).
+2. Check the current software position with ``M114``.
 3. Measure the actual physical angles of the robot.
-4. Calculate the discrepancy between the logical and physical states, convert this delta into steps, and update the offset variables within the firmware configuration.
+4. Calculate the difference between the software angles and physical angles, convert this difference into steps, and update the offset numbers in the code.
