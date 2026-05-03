@@ -20,7 +20,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Kinematics &amp; Workspace" href="kinematics.html" />
-    <link rel="prev" title="Commissioning &amp; Calibration" href="setup.html" /> 
+    <link rel="prev" title="Setup &amp; Calibration" href="setup.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -44,10 +44,10 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Documentation Sections:</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware &amp; Electrical Specifications</a></li>
-<li class="toctree-l1"><a class="reference internal" href="setup.html">Commissioning &amp; Calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hardware.html">Hardware Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="setup.html">Setup &amp; Calibration</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Serial Protocol &amp; Command Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#protocol-overview">Protocol Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#serial-protocol">Serial Protocol</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#supported-commands">Supported Commands</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#motion-and-modes">Motion and Modes</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#motor-power-and-diagnostics">Motor Power and Diagnostics</a></li>
@@ -86,16 +86,16 @@
              
   <section id="serial-protocol-command-reference">
 <h1>Serial Protocol &amp; Command Reference<a class="headerlink" href="#serial-protocol-command-reference" title="Link to this heading"></a></h1>
-<section id="protocol-overview">
-<h2>Protocol Overview<a class="headerlink" href="#protocol-overview" title="Link to this heading"></a></h2>
-<p>The firmware communicates via a robust, text-based serial protocol optimized for minimal overhead.</p>
+<section id="serial-protocol">
+<h2>Serial Protocol<a class="headerlink" href="#serial-protocol" title="Link to this heading"></a></h2>
+<p>The software uses a simple text-based serial protocol to communicate.</p>
 <ul class="simple">
 <li><p><strong>Baud Rate</strong>: <code class="docutils literal notranslate"><span class="pre">115200</span></code> (default)</p></li>
-<li><p><strong>Line Termination</strong>: Standard newline or carriage return</p></li>
-<li><p><strong>Boot Initialization</strong>: Outputs <code class="docutils literal notranslate"><span class="pre">READY</span></code> upon successful startup</p></li>
-<li><p><strong>Command Acknowledgment</strong>: Returns <code class="docutils literal notranslate"><span class="pre">ok</span></code> after a successful execution</p></li>
-<li><p><strong>Error Handling</strong>: Outputs <code class="docutils literal notranslate"><span class="pre">Error:</span> <span class="pre">&lt;message&gt;</span></code> upon encountering invalid requests</p></li>
-<li><p><strong>Hardware Alarms</strong>: Broadcasts <code class="docutils literal notranslate"><span class="pre">ALARM:ESTOP</span></code> during emergency states</p></li>
+<li><p><strong>Line Ending</strong>: Newline or carriage return</p></li>
+<li><p><strong>Startup</strong>: Prints <code class="docutils literal notranslate"><span class="pre">READY</span></code> when the board boots up</p></li>
+<li><p><strong>Success</strong>: Prints <code class="docutils literal notranslate"><span class="pre">ok</span></code> when a command finishes</p></li>
+<li><p><strong>Errors</strong>: Prints <code class="docutils literal notranslate"><span class="pre">Error:</span> <span class="pre">&lt;message&gt;</span></code> if you send a bad command</p></li>
+<li><p><strong>Emergency</strong>: Prints <code class="docutils literal notranslate"><span class="pre">ALARM:ESTOP</span></code> if an emergency stop happens</p></li>
 </ul>
 </section>
 <section id="supported-commands">
@@ -126,11 +126,11 @@
 </tr>
 </tbody>
 </table>
-<p><strong>G0/G1 Parameter Architecture:</strong></p>
+<p><strong>G0/G1 Parameters:</strong></p>
 <ul class="simple">
-<li><p><strong>Joint Space Mapping</strong>: <code class="docutils literal notranslate"><span class="pre">T1&lt;deg&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">T2&lt;deg&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">T3&lt;deg&gt;</span></code></p></li>
-<li><p><strong>Cartesian Mapping</strong>: <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, <code class="docutils literal notranslate"><span class="pre">Z</span></code> (in millimeters)</p></li>
-<li><p><strong>Feedrate Designation</strong>: <code class="docutils literal notranslate"><span class="pre">F&lt;deg/s&gt;</span></code> (Modulates NEMA joint-space rotational speed)</p></li>
+<li><p><strong>Joint Moves</strong>: <code class="docutils literal notranslate"><span class="pre">T1&lt;deg&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">T2&lt;deg&gt;</span></code>, <code class="docutils literal notranslate"><span class="pre">T3&lt;deg&gt;</span></code></p></li>
+<li><p><strong>Cartesian Moves</strong>: <code class="docutils literal notranslate"><span class="pre">X</span></code>, <code class="docutils literal notranslate"><span class="pre">Y</span></code>, <code class="docutils literal notranslate"><span class="pre">Z</span></code> (in millimeters)</p></li>
+<li><p><strong>Speed</strong>: <code class="docutils literal notranslate"><span class="pre">F&lt;deg/s&gt;</span></code> (Controls how fast the main motors turn)</p></li>
 </ul>
 </section>
 <section id="motor-power-and-diagnostics">
@@ -186,7 +186,7 @@
 </tr>
 </tbody>
 </table>
-<p><em>Implementation Note:</em> Transmitting the Ctrl-X (<code class="docutils literal notranslate"><span class="pre">0x18</span></code>) byte over serial is aggressively captured as an emergency-stop trigger, even during blocking execution loops.</p>
+<p><em>Note:</em> Sending the Ctrl-X (<code class="docutils literal notranslate"><span class="pre">0x18</span></code>) byte over serial will instantly trigger an emergency stop, even if the robot is busy doing something else.</p>
 </section>
 </section>
 </section>
@@ -195,7 +195,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="setup.html" class="btn btn-neutral float-left" title="Commissioning &amp; Calibration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="setup.html" class="btn btn-neutral float-left" title="Setup &amp; Calibration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="kinematics.html" class="btn btn-neutral float-right" title="Kinematics &amp; Workspace" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

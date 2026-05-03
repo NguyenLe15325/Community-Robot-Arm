@@ -1,16 +1,16 @@
 Serial Protocol & Command Reference
 ===================================
 
-Protocol Overview
------------------
-The firmware communicates via a robust, text-based serial protocol optimized for minimal overhead. 
+Serial Protocol
+---------------
+The software uses a simple text-based serial protocol to communicate. 
 
 * **Baud Rate**: ``115200`` (default)
-* **Line Termination**: Standard newline or carriage return
-* **Boot Initialization**: Outputs ``READY`` upon successful startup
-* **Command Acknowledgment**: Returns ``ok`` after a successful execution
-* **Error Handling**: Outputs ``Error: <message>`` upon encountering invalid requests
-* **Hardware Alarms**: Broadcasts ``ALARM:ESTOP`` during emergency states
+* **Line Ending**: Newline or carriage return
+* **Startup**: Prints ``READY`` when the board boots up
+* **Success**: Prints ``ok`` when a command finishes
+* **Errors**: Prints ``Error: <message>`` if you send a bad command
+* **Emergency**: Prints ``ALARM:ESTOP`` if an emergency stop happens
 
 Supported Commands
 ------------------
@@ -31,11 +31,11 @@ Motion and Modes
 | ``G91``           | Set relative positioning mode (Cartesian)         |
 +-------------------+---------------------------------------------------+
 
-**G0/G1 Parameter Architecture:**
+**G0/G1 Parameters:**
 
-* **Joint Space Mapping**: ``T1<deg>``, ``T2<deg>``, ``T3<deg>``
-* **Cartesian Mapping**: ``X``, ``Y``, ``Z`` (in millimeters)
-* **Feedrate Designation**: ``F<deg/s>`` (Modulates NEMA joint-space rotational speed)
+* **Joint Moves**: ``T1<deg>``, ``T2<deg>``, ``T3<deg>``
+* **Cartesian Moves**: ``X``, ``Y``, ``Z`` (in millimeters)
+* **Speed**: ``F<deg/s>`` (Controls how fast the main motors turn)
 
 Motor Power and Diagnostics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,4 +85,4 @@ Emergency Halts
 | ``!``     | Instantaneous alias for ``M112``  |
 +-----------+-----------------------------------+
 
-*Implementation Note:* Transmitting the Ctrl-X (``0x18``) byte over serial is aggressively captured as an emergency-stop trigger, even during blocking execution loops.
+*Note:* Sending the Ctrl-X (``0x18``) byte over serial will instantly trigger an emergency stop, even if the robot is busy doing something else.
